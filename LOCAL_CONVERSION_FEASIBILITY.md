@@ -63,3 +63,12 @@ Qwopus Flash's first MLP down-projection also converted successfully to
 442,368 bytes of q4i data (SHA256
 `60cd00b1ac80ec4de57ece9a7380ab12838f6de43cbb6733497a676871aa72f9`).
 This is an *isolated tensor fragment* test, not a complete model build.
+
+## Composite tensors
+
+`write_quantized_parts()` accepts ordered ranges from multiple checkpoint
+tensors and assembles 64-row quantization tiles even when source boundaries
+are not aligned. This is required for Garlic's combined QKV and MLP gate/up
+matrices. Synthetic three-part, non-aligned boundary checks pass bytewise
+against the reference Q3/Q4 interleavers for q3i/q4i/q4row. Full conversion
+and actual PS4 inference remain pending.

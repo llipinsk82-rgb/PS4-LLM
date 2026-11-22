@@ -8,7 +8,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "pc"))
 
-from blackserv_coder.streaming import tensor_rows, iter_tensor_rows, estimated_peak_tensor_mib, write_quantized_tensor
+from blackserv_coder.streaming import tensor_rows, iter_tensor_rows, estimated_peak_tensor_mib, write_quantized_tensor, write_quantized_parts
 from q3 import quantize_q3
 from q4 import quantize_q4
 
@@ -111,6 +111,51 @@ class StreamingTests(unittest.TestCase):
         for fmt, n in (("other", 64), ("q4i", 2), ("q3i", -64)):
             with self.assertRaises(ValueError):
                 write_quantized_tensor(ck, ck.name, io.BytesIO(), fmt, n)
+
+    def test_composite_writer_crosses_tensor_boundaries(self):
+        import io
+        from q3 import interleave_q3
+        from q4 import interleave_q4
+        first = self.matrix[:88]
+        second = self.matrix[88:165]
+        third = self.matrix[165:192]
+        sources = [FakeCheckpoint(a, "BF16") for a in (first,second,third)]
+        class Combined:
+            def __init__(self):
+                self.weight_map = {}
+                self.by_shard = {}
+                for i, ck in enumerate(sources):
+                    name, shard = f"part{i}", f"part{i}.safetensors"
+                    ck.name = name
+                    ck.weight_map = {name: shard}
+                    ck.meta = {name: next(iter(ck.meta.values()))}
+                    self.weight_map[name] = shard
+                    self.by_shard[shard] = ck
+            def header(self, shard):
+                return self.by_shard[shard].header(shard)
+            def _get(self, shard, start, end):
+                return self.by_shard[shard]._get(shard, start, end)
+        ck = Combined()
+        parts = [("part0", 0, 88), ("part1", 0, 77), ("part2", 0, 27)]
+        full = np.concatenate([tensor_rows(ck, name, a, b) for name,a,b in parts])
+        for fmt in ("q3i","q4i","q4row"):
+            if fmt == "q3i":
+                q, d = quantize_q3(full)
+                expected = b"".join(interleave_q3(q, d))
+            else:
+                q, d = quantize_q4(full)
+                expected = (b"".join(interleave_q4(q, d)) if fmt == "q4i"
+                            else np.concatenate([q, d.view(np.uint8)], axis=1).tobytes())
+            out=io.BytesIO()
+            meta=write_quantized_parts(ck,parts,out,fmt=fmt)
+            self.assertEqual(out.getvalue(),expected,fmt)
+            self.assertEqual(meta["rows"],192)
+
+    def test_composite_rejects_unaligned_total(self):
+        import io
+        ck=FakeCheckpoint(self.matrix,"BF16")
+        with self.assertRaises(ValueError):
+            write_quantized_parts(ck,[(ck.name,0,65)],io.BytesIO())
 
 if __name__ == "__main__":
     unittest.main()
