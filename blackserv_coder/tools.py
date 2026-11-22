@@ -2,6 +2,8 @@
 from __future__ import annotations
 import json
 import os
+import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 import subprocess
 import urllib.parse
@@ -14,6 +16,8 @@ class ToolError(ValueError):
 class Tools:
     def __init__(self, workspace: str | Path):
         self.root = Path(workspace).resolve()
+        if self.root == self.root.anchor or len(self.root.parts) < 3:
+            raise ToolError("workspace must be a project directory")
         if not self.root.is_dir():
             raise ToolError("workspace must exist")
 
@@ -21,6 +25,10 @@ class Tools:
         path = (self.root / name).resolve()
         if not path.is_relative_to(self.root):
             raise ToolError("path outside workspace")
+        relative = path.relative_to(self.root)
+        forbidden = {".git", ".ssh", ".env", ".aws", ".config", "credentials", "secrets"}
+        if any(p.lower() in forbidden or p.lower().endswith((".pem", ".key", ".p12")) for p in relative.parts):
+            raise ToolError("protected path")
         return path
 
     def execute(self, name: str, args: dict) -> str:
@@ -30,7 +38,8 @@ class Tools:
             "list_files": self.list_files, "read_file": self.read_file,
             "write_file": self.write_file, "extract_zip": self.extract_zip,
             "git_status": self.git_status, "git_diff": self.git_diff,
-            "web_fetch": self.web_fetch,
+            "web_fetch": self.web_fetch, "web_search": self.web_search,
+            "github_repo_info": self.github_repo_info, "ssh_probe": self.ssh_probe,
         }
         if name not in methods:
             raise ToolError("unknown or unapproved tool")
@@ -74,10 +83,15 @@ class Tools:
                 raise ToolError("ZIP limits exceeded")
             for item in items:
                 target = (dest / item.filename).resolve()
+                # Reject traversal, credential directories, Windows streams and Unix symlinks.
                 if not target.is_relative_to(dest) or item.filename.startswith(("/", "\\")):
                     raise ToolError("ZIP traversal rejected")
-                if (item.external_attr >> 16) & 0o170000 == 0o120000:
-                    raise ToolError("ZIP symbolic link rejected")
+                if ":" in item.filename or "\\" in item.filename:
+                    raise ToolError("ZIP unsafe path")
+                self.path(str(target.relative_to(self.root)))
+                mode = (item.external_attr >> 16) & 0o170000
+                if mode not in (0, 0o100000, 0o040000):
+                    raise ToolError("ZIP special file rejected")
             z.extractall(dest)
         return "extracted " + str(len(items)) + " entries"
 
@@ -109,6 +123,54 @@ class Tools:
                 raise ToolError("only text/json content supported")
             return res.read(24000).decode("utf-8", errors="replace")
 
+    def web_search(self, query: str) -> str:
+        """Public search results; never send workspace content to a search engine."""
+        if not isinstance(query, str) or not 2 <= len(query) <= 200:
+            raise ToolError("search query must contain 2..200 characters")
+        url = "https://www.bing.com/search?format=rss&q=" + urllib.parse.quote_plus(query)
+        req = urllib.request.Request(url, headers={"User-Agent":"BlackServCoder/0.1"})
+        with urllib.request.urlopen(req, timeout=12) as response:
+            if "xml" not in response.headers.get("Content-Type", "").lower():
+                raise ToolError("search returned non-XML content")
+            data = response.read(180000)
+        root = ET.fromstring(data)
+        entries = []
+        for item in root.findall("./channel/item")[:8]:
+            entries.append({
+                "title": (item.findtext("title") or "")[:240],
+                "url": (item.findtext("link") or "")[:800],
+                "summary": (item.findtext("description") or "")[:600]
+            })
+        return json.dumps(entries, ensure_ascii=False)
+
+    def github_repo_info(self, repository: str) -> str:
+        """Public GitHub repo metadata without using the SYSTEM account token."""
+        if (not isinstance(repository, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository)
+                or any(part in (".", "..") for part in repository.split("/"))):
+            raise ToolError("invalid GitHub owner/repository")
+        req = urllib.request.Request("https://api.github.com/repos/" + repository,
+            headers={"User-Agent":"BlackServCoder/0.1", "Accept":"application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.load(response)
+        return json.dumps({k:data.get(k) for k in
+            ("full_name", "description", "default_branch", "html_url",
+             "stargazers_count", "archived", "disabled")})
+
+    def ssh_probe(self, host: str, check: str = "uptime") -> str:
+        """Allowlisted, read-only SSH checks. Never open an interactive shell."""
+        allow = {x.strip() for x in os.environ.get("BLACKSERV_SSH_HOSTS", "").split(",") if x.strip()}
+        checks = {"uptime":"uptime", "uname":"uname -a", "disk":"df -h"}
+        if not allow or host not in allow or check not in checks:
+            raise ToolError("SSH host/check not allowed")
+        if not re.fullmatch(r"[A-Za-z0-9_.@-]{1,200}", host):
+            raise ToolError("invalid SSH host")
+        result = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+            "-o", "ConnectTimeout=5", "-o", "NumberOfPasswordPrompts=0", host,
+            checks[check]], capture_output=True, text=True, timeout=15, shell=False)
+        if result.returncode:
+            raise ToolError("SSH check failed: " + result.stderr[:500])
+        return result.stdout[:12000]
+
 TOOL_SCHEMAS = [
     {"name":"list_files","description":"List entries inside workspace","parameters":{"type":"object","properties":{"path":{"type":"string"}}}},
     {"name":"read_file","description":"Read UTF-8 file inside workspace","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}},
@@ -117,4 +179,7 @@ TOOL_SCHEMAS = [
     {"name":"git_status","description":"Read git status","parameters":{"type":"object","properties":{}}},
     {"name":"git_diff","description":"Read unstaged git diff","parameters":{"type":"object","properties":{}}},
     {"name":"web_fetch","description":"Read HTTPS documentation from approved hosts","parameters":{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}},
+    {"name":"web_search","description":"Search public web pages via Bing RSS (no internal files or credentials)","parameters":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}},
+    {"name":"github_repo_info","description":"Get public GitHub repository metadata without token","parameters":{"type":"object","properties":{"repository":{"type":"string"}},"required":["repository"]}},
+    {"name":"ssh_probe","description":"Run a predefined read-only SSH check on an approved host","parameters":{"type":"object","properties":{"host":{"type":"string"},"check":{"type":"string","enum":["uptime","uname","disk"]}},"required":["host"]}},
 ]

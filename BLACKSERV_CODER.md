@@ -1,30 +1,52 @@
-# BlackServ Coder — local tool-agent prototype
+# BlackServ Coder — local PS4 coding agent (in development)
 
-This repository retains the upstream Garlic LLM engine. The `blackserv_coder/`
-package is a small Dell-side tool executor for Garlic 1.21's OpenAI-compatible API.
+This project uses the Garlic LLM engine and its experimental 1.21 model switch
+and OpenAI-compatible API. The intended inference model is
+`Jackrong/Qwopus3-5-9B-Coder-Flash`; the model is not yet converted or running
+on the console. Our own code lives in `blackserv_coder/`.
 
-## What works in the prototype
-- Locally run model (Garlic API) selects a function and receives its result.
-- Workspace-restricted file listing/read/write, bounded ZIP extraction.
-- Read-only Git status/diff.
-- Allowlisted HTTPS documentation fetching.
-- Explicit maximum number of tool-call rounds.
+## Currently implemented and tested
 
-## Not yet implemented
-- Terminal command execution, SSH, GitHub writes, general search and live PS4 tests.
-- Full Qwopus model weight conversion and PS4 inference.
-These are deliberately not claimed as working. Do not point the executor at
-sensitive directories or production repositories before policy review.
+- Tool-call loop with a per-task step limit, using Garlic 1.21's API protocol.
+- Workspace-scoped read/write/list, bounded ZIP extraction, read-only Git.
+- Public Bing RSS web search, restricted HTTPS documentation fetching.
+- GitHub **public repository metadata** without any SYSTEM account token.
+- Read-only SSH checks (`uptime`, `uname`, `disk`) **only** for
+  `BLACKSERV_SSH_HOSTS`-allowlisted targets; empty allowlist by default.
+- Explicit rejection of protected `.git`, `.ssh`, `.env` and private-key paths.
+- Tests use an API response stub; they do not establish model performance.
 
-## Test on Dell
-`C:\Users\lukas\AppData\Local\Programs\Python\Python313\python.exe -m unittest discover -s tests -p test_blackserv_coder.py -v`
+**Not implemented:** arbitrary shell/terminal commands, GitHub write operations,
+full file search/edit patches, unattended execution of tests, PS4 inference.
+These must be scoped to a non-privileged runner; the current SentinelX agent
+runs as Windows SYSTEM and cannot safely execute arbitrary model-produced code.
 
-## API
-In Garlic 1.21 activate API (L3). The model must be accessible on the LAN,
-for example at `http://PS4_IP:8080/v1`. Its server does not require an API
-key by default; set `/data/garlic_api_key.txt` to restrict access before
-using outside a trusted isolated network.
+## Run on Dell after PS4 API is configured
 
-## Source and license
-Garlic LLM upstream: https://github.com/leonardo-alegria/garlic-llm
-The upstream GPL-3.0 license and attribution remain in this repository.
+```powershell
+$py = 'C:\Users\lukas\AppData\Local\Programs\Python\Python313\python.exe'
+& $py -m unittest discover -s tests -p test_blackserv_coder.py -v
+& $py -m blackserv_coder --workspace D:\BlackServ_Coder\workspace --api http://PS4_IP:8080/v1 "Inspect the source files"
+```
+
+Create a dedicated `workspace` folder before launching. Never use `C:\`,
+`D:\`, the user's home folder, or a sensitive production repository as
+workspace. The API is local to the LAN and not encrypted by default.
+Garlic API can be protected by `/data/garlic_api_key.txt`; set
+`GARLIC_API_KEY` in the executor environment, without putting it in Git.
+
+## Model conversion (not yet run)
+
+```powershell
+$env:PYTHONPATH = 'D:\BlackServ_Coder\.deps'
+$py = 'C:\Users\lukas\AppData\Local\Programs\Python\Python313\python.exe'
+& $py pc/checkpoint.py Jackrong/Qwopus3-5-9B-Coder-Flash
+# Following line uses PAID Modal 64-GiB cloud compute: requires separate approval/account.
+# & $py -m modal run pc/modal_qwen35_9b.py::convert --src Jackrong/Qwopus3-5-9B-Coder-Flash
+```
+
+The first validation **passed** on Dell: 427 tensors, BF16, MTP.
+No conversion, upload or PS4 benchmark has happened.
+
+See `PLAN.md` for gates. Garlic upstream remains tracked separately and the
+project preserves GPL-3.0 copyright and license information.

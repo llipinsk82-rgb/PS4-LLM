@@ -68,5 +68,37 @@ class ToolTests(unittest.TestCase):
         self.assertEqual(result["status"], "complete")
         self.assertEqual((self.root / "result.txt").read_text(), "OK")
 
+    def test_protected_paths(self):
+        for name in (".git/config", ".ssh/id_rsa", ".env", "keys/private.pem"):
+            with self.assertRaises(ToolError):
+                self.tools.write_file(name, "blocked")
+
+    def test_zip_protected_path(self):
+        p = self.root / "unsafe.zip"
+        with zipfile.ZipFile(p, "w") as z:
+            z.writestr(".git/config", "no")
+        with self.assertRaises(ToolError):
+            self.tools.extract_zip("unsafe.zip", ".")
+
+    def test_zip_symlink(self):
+        p = self.root / "link.zip"
+        with zipfile.ZipFile(p, "w") as z:
+            info = zipfile.ZipInfo("link")
+            info.create_system = 3
+            info.external_attr = (0o120777 << 16)
+            z.writestr(info, "outside")
+        with self.assertRaises(ToolError):
+            self.tools.extract_zip("link.zip", ".")
+
+    def test_github_repo_name_validation(self):
+        for name in ("../evil", "evil", "a/b/../../"):
+            with self.assertRaises(ToolError):
+                self.tools.github_repo_info(name)
+
+    def test_ssh_default_denied(self):
+        with patch.dict("os.environ", {"BLACKSERV_SSH_HOSTS":""}):
+            with self.assertRaises(ToolError):
+                self.tools.ssh_probe("example.org")
+
 if __name__ == "__main__":
     unittest.main()
