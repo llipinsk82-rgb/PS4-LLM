@@ -76,3 +76,59 @@ def estimated_peak_tensor_mib(rows: int, columns: int, rows_per_chunk: int = 256
     if min(rows, columns, rows_per_chunk) <= 0:
         raise ValueError("positive dimensions required")
     return min(rows, rows_per_chunk) * columns * 32 / (1024 * 1024)
+
+
+def write_quantized_tensor(checkpoint, name: str, out, fmt: str,
+                           rows_per_chunk: int = 64) -> dict:
+    """Stream Garlic-compatible q4i/q3i/q4row tensor into a binary file.
+
+    q4i/q3i have separate packed-weight and scale regions, so scales are
+    spooled to a temporary file before appending. Peak RAM is limited by
+    a row tile, not the full matrix. No intermediate full-size NumPy arrays.
+    This function does not handle QKV/gate-up concatenation, MTP or model.idx.
+    """
+    import tempfile
+    import shutil
+    import sys
+    from pathlib import Path
+
+    pc = Path(__file__).resolve().parents[1] / "pc"
+    if str(pc) not in sys.path:
+        sys.path.insert(0, str(pc))
+    from q3 import quantize_q3, interleave_q3
+    from q4 import quantize_q4, interleave_q4
+
+    if fmt not in ("q4i", "q3i", "q4row"):
+        raise ValueError("unsupported format")
+    if rows_per_chunk <= 0 or rows_per_chunk % 64 != 0:
+        raise ValueError("rows_per_chunk must be a multiple of 64")
+    _, headers = checkpoint.header(checkpoint.weight_map[name])
+    shape = headers[name]["shape"]
+    if len(shape) != 2 or shape[0] % 64 or shape[1] % 32:
+        raise ValueError("incompatible source dimensions")
+    rows, cols = shape
+    packed_size = 0
+    scale_size = 0
+    with tempfile.TemporaryFile() as scale_spool:
+        for chunk in iter_tensor_rows(checkpoint, name, rows_per_chunk):
+            w = chunk.values
+            if fmt == "q3i":
+                q, scales = quantize_q3(w)
+                packed, sc = interleave_q3(q, scales)
+            else:
+                q, scales = quantize_q4(w)
+                if fmt == "q4i":
+                    packed, sc = interleave_q4(q, scales)
+                else:
+                    rowwise = np.concatenate((q, scales.view(np.uint8)), axis=1)
+                    packed, sc = rowwise.tobytes(), b""
+            out.write(packed)
+            packed_size += len(packed)
+            if sc:
+                scale_spool.write(sc)
+                scale_size += len(sc)
+        if scale_size:
+            scale_spool.seek(0)
+            shutil.copyfileobj(scale_spool, out, 1 << 20)
+    return {"rows": rows, "cols": cols, "fmt": fmt,
+            "size": packed_size + scale_size, "scales": packed_size}

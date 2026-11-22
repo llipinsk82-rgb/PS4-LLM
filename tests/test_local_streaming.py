@@ -8,7 +8,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "pc"))
 
-from blackserv_coder.streaming import tensor_rows, iter_tensor_rows, estimated_peak_tensor_mib
+from blackserv_coder.streaming import tensor_rows, iter_tensor_rows, estimated_peak_tensor_mib, write_quantized_tensor
 from q3 import quantize_q3
 from q4 import quantize_q4
 
@@ -81,6 +81,36 @@ class StreamingTests(unittest.TestCase):
             list(iter_tensor_rows(ck, ck.name, 0))
         self.assertGreater(estimated_peak_tensor_mib(24576, 4096, 256), 0)
 
+
+    def test_writer_exact_q4i_q3i_q4row(self):
+        import io
+        from q3 import interleave_q3
+        from q4 import interleave_q4
+        for fmt in ("q4i", "q3i", "q4row"):
+            ck = FakeCheckpoint(self.matrix, "BF16")
+            whole = tensor_rows(ck, ck.name, 0, 384)
+            if fmt == "q3i":
+                q, scales = quantize_q3(whole)
+                expected = b"".join(interleave_q3(q, scales))
+            elif fmt == "q4i":
+                q, scales = quantize_q4(whole)
+                expected = b"".join(interleave_q4(q, scales))
+            else:
+                q, scales = quantize_q4(whole)
+                expected = np.concatenate((q, scales.view(np.uint8)), axis=1).tobytes()
+            ck.calls.clear()  # exclude reference whole-matrix read
+            out = io.BytesIO()
+            meta = write_quantized_tensor(ck, ck.name, out, fmt, rows_per_chunk=128)
+            self.assertEqual(out.getvalue(), expected, fmt)
+            self.assertEqual(meta["size"], len(expected))
+            self.assertLessEqual(max(b - a for a, b in ck.calls), 128 * 128 * 2)
+
+    def test_writer_rejects_bad_formats_and_alignment(self):
+        import io
+        ck = FakeCheckpoint(self.matrix, "BF16")
+        for fmt, n in (("other", 64), ("q4i", 2), ("q3i", -64)):
+            with self.assertRaises(ValueError):
+                write_quantized_tensor(ck, ck.name, io.BytesIO(), fmt, n)
 
 if __name__ == "__main__":
     unittest.main()

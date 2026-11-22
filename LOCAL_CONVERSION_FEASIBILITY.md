@@ -51,3 +51,15 @@ as the original whole-matrix quantizers on the tested synthetic data.
 **Not yet proven:** whole-model conversion within 32 GiB peak RAM, byte-for-byte
 compatible model artifacts, model inference, PS4 runtime speed or coding quality.
 This phase only proves bounded row reads and quantizer equivalence on samples.
+
+## Update: local binary writer
+
+`write_quantized_tensor()` now emits Garlic-compatible `q4i`, `q3i` and
+`q4row` byte streams from 64-row-aligned chunks, using a temporary scales
+spool for the split packed-data/scales layout. On synthetic BF16 samples its
+binary output matches the original Garlic whole-tensor `interleave_q3` and
+`interleave_q4` exactly for all three formats. A live 64-row fragment of
+Qwopus Flash's first MLP down-projection also converted successfully to
+442,368 bytes of q4i data (SHA256
+`60cd00b1ac80ec4de57ece9a7380ab12838f6de43cbb6733497a676871aa72f9`).
+This is an *isolated tensor fragment* test, not a complete model build.
