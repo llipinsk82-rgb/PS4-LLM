@@ -57,3 +57,20 @@ Evidence: `benchmark_results/qwopus_history_probe_20261123.json`,
 CTO conclusion: narrow deterministic coding is possible, but automatic self-repair
 is not validated. Next: provide *actual vs expected* feedback, test additional
 models/tasks, and avoid autonomous production changes.
+
+## Repair loop v2 — actual vs expected (2026-11-23)
+tests/qwopus_repair_v2.py adds bounded, isolated test feedback with actual
+outputs or exceptions; no model-controlled shell, network or Git operations.
+Five local selftests PASS. Three pre-seeded regressions tested against live PS4:
+- binary_search: seed FAIL (3/4); first correction PASS (4/4).
+- discount: seed FAIL (0/3); first correction PASS (3/3).
+- parse_ports: seed FAIL (1/3); all generated attempts FAIL (1/3 or
+  forbidden AST Try). Explicit structural diagnostic did not fix it.
+The v2 runner has bounded retries and stops on repeated identical failures.
+Evidence: benchmark_results/qwopus_repair_v2_20261123.json and
+benchmark_results/qwopus_repair_v2b_20261123.json.
+
+Decision: bounded assistant mode supported for simple pure functions only, with
+deterministic verification and human review. Autonomous general code changes,
+SSH and production operations are NOT validated. The AST/subprocess grader is
+a benchmark isolation mechanism, not a security boundary for adversarial code.
