@@ -74,6 +74,11 @@ static void fail(Engine* e, const char* fmt, ...) {
 // Where a weights file is: inside the package (/app0/models, the all-in-one PKG) or, with an app-only package, at the
 // path its index names (in /data). The first one that exists; path (129 bytes or more) is rewritten in place.
 static void weights_locate(char* path) {
+    // An explicit external-model path must win over any leftover /app0/models/<basename>.
+    if (!strncmp(path, "/data/garlic/models/", sizeof("/data/garlic/models/") - 1)) {
+        say("weights: %s", path);
+        return;
+    }
     const char* base = strrchr(path, '/');
     char in_pkg[129];
     snprintf(in_pkg, sizeof(in_pkg), "/app0/models/%s", base ? base + 1 : path);
