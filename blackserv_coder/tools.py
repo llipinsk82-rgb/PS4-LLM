@@ -72,7 +72,14 @@ class Tools:
             raise ToolError("not a file")
         if not p.parent.is_dir():
             raise ToolError("parent directory does not exist")
-        p.write_text(content, encoding="utf-8")
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=p.parent,
+                                         prefix=".blackserv-write-", delete=False) as tmp:
+            temp = Path(tmp.name)
+            tmp.write(content)
+        try:
+            os.replace(temp,p)
+        finally:
+            temp.unlink(missing_ok=True)
         return "written: " + str(p.relative_to(self.root))
 
     def search_text(self, query: str, path: str = ".") -> str:
@@ -155,6 +162,8 @@ class Tools:
                 if ":" in item.filename or "\\" in item.filename:
                     raise ToolError("ZIP unsafe path")
                 self.path(str(target.relative_to(self.root)))
+                if target.exists() and not (item.is_dir() and target.is_dir()):
+                    raise ToolError("ZIP would overwrite existing entry")
                 mode = (item.external_attr >> 16) & 0o170000
                 if mode not in (0, 0o100000, 0o040000):
                     raise ToolError("ZIP special file rejected")

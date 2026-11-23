@@ -118,5 +118,15 @@ class ToolTests(unittest.TestCase):
             self.tools.replace_text("twice.txt","missing","new")
         self.assertEqual(self.tools.read_file("twice.txt"),"same same")
 
+    def test_zip_never_overwrites_existing_file(self):
+        target = self.root / "keep.txt"
+        target.write_text("original")
+        archive = self.root / "clobber.zip"
+        with zipfile.ZipFile(archive, "w") as z:
+            z.writestr("keep.txt", "new")
+        with self.assertRaises(ToolError):
+            self.tools.extract_zip("clobber.zip", ".")
+        self.assertEqual(target.read_text(), "original")
+
 if __name__ == "__main__":
     unittest.main()
