@@ -46,3 +46,14 @@ The PS4 FTP `SIZE` command wraps at 2^32 bytes for weights larger than 4 GiB. Th
 - If API is exposed on an untrusted LAN, configure `/data/garlic_api_key.txt` on PS4. Do not expose port 8080 to the internet.
 - The new native package uses the existing Garlic title ID. Do not install without checking version, preserving the existing app's recovery package and having a tested installation path.
 - Current PS4 remote package installer availability and UI/Remote Play pairing are not established by this branch.
+## Live PS4 acceptance — 2026-11-23 (PASS)
+- Device: real PS4; Garlic 1.20 + QwopusFlash + 1.21 tool-call backport, not a simulated model.
+- FTP /data/ps4ai_log.txt confirmed external QwopusFlash weights and language model ready.
+- API /health: HTTP 200. /v1/models exposed Qwen3.5-9B.
+- Coding inference: HTTP 200, generated a valid Python add(a,b) function.
+- Model requested named echo_test tool with arguments {"message":"QWOPUS_CHECK"}, finish_reason tool_calls: PASS.
+- Test client supplied the simulated (not executed remotely) safe tool-result QWOPUS_TOOL_RESULT_OK.
+- Model consumed tool result and replied with exact returned string: PASS.
+- tests/live_ps4_smoke.py exited 0 on Dell via SentinelX.
+- First attempt hit an incorrect /v1/health URL in the test script (HTTP 404); this was fixed in commit a6f3667.
+- No real Sentinel_BS connection or PS4-native outbound HTTPS connector was tested.
