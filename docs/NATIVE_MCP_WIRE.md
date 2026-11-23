@@ -58,7 +58,17 @@ An independent offline check used a json-c-based parser shim and
 ran **52 checks, 0 failed**, including denied write tools, malformed ids,
 wrong response ids, errors, and oversized responses. This is NOT a claim
 that the real Garlic parser, PS4 binary, TLS, OAuth or live MCP service
-has passed. The GitHub read-only CI workflow also compiles these tests against the REAL `chat/api_proto.c`; check its latest run on the spike branch for the verified status. PS4 native build remains blocked until the development Dell is reachable.
+has passed. GitHub Actions run 45206418434: native wire 30/30 and client 22/22 PASS against the actual Garlic JSON parser.
+
+Dell SentinelX returned online on 2026-11-23; PS4-targeted compilation of both standalone modules PASS with installed OpenOrbis and Zig:
+- mcp_wire.o: 34,376 bytes, x86-64 ELF (machine=62)
+- mcp_client.o: 13,264 bytes, x86-64 ELF (machine=62)
+
+Compiler settings for reproduction: zig cc -target x86_64-freebsd-none -march=btver2 -O2 -fPIC -fno-stack-protector -fshort-wchar -nostdinc -isystem <OpenOrbis/PS4Toolchain/include> -Wall -Wextra -Werror -c -Ichat -Ipc/native_mcp pc/native_mcp/<source>.c -o <object>.o.
+
+Objects were produced in D:\BlackServ_Coder\tmp_mcp_native\ps4 (outside the source tree). Both passed ELF signature and target-machine checks.
+
+No full PS4 app link, install, inference, HTTPS/TLS handshake or live MCP connection has been tested. Native codec remains outside chat/ to prevent accidental activation against production Sentinel_BS.
 
 ## Next native integration work
 
