@@ -1,0 +1,45 @@
+{
+  "model": "Qwen3.5-9B",
+  "pass": true,
+  "attempts": [
+    {
+      "attempt": 1,
+      "pass": true,
+      "feedback": "passed 3/3",
+      "checks": [
+        {
+          "input": [
+            100,
+            20
+          ],
+          "expected": 80,
+          "actual": 80.0,
+          "pass": true
+        },
+        {
+          "input": [
+            150,
+            10
+          ],
+          "expected": 135,
+          "actual": 135.0,
+          "pass": true
+        },
+        {
+          "input": [
+            80,
+            100
+          ],
+          "expected": 0,
+          "actual": 0.0,
+          "pass": true
+        }
+      ],
+      "answer": "```python\ndef discount(price, pct):\n    return price * (1 - pct / 100)\n```",
+      "seconds": 2.04
+    }
+  ],
+  "task": "discount",
+  "repo_sha": "25cd77473ece0ab8bac6beca7b16c9fdf234cf0a",
+  "proposed_diff": "--- a/fixtures/discount.py\n+++ b/fixtures/discount.py\n@@ -1 +1,2 @@\n-def discount(price,pct):return price*(100+pct)/100\n+def discount(price, pct):\n+    return price * (1 - pct / 100)\n"
+}

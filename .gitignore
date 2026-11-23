@@ -9,3 +9,6 @@ toolchain/
 models/
 third_party/
 pc/fonts_libres/
+
+# Local model-generated, verified proposals (never commit automatically)
+agent_workspace/

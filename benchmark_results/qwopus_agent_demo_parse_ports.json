@@ -1,0 +1,24 @@
+{
+  "model": "Qwen3.5-9B",
+  "pass": false,
+  "attempts": [
+    {
+      "attempt": 1,
+      "pass": false,
+      "feedback": "function forbidden",
+      "checks": [],
+      "answer": "```python\ndef parse_ports(lines):\n    ports = []\n    for line in lines:\n        parts = line.split()\n        if len(parts) >= 2:\n            protocol = parts[0]\n            port_str = parts[1]\n            if protocol == 'tcp' and port_str == 'open':\n                try:\n                    port = int(port_str)\n                    ports.append(port)\n                except ValueError:\n                    pass\n    return sorted(set(ports))\n```",
+      "seconds": 5.44
+    },
+    {
+      "attempt": 2,
+      "pass": false,
+      "feedback": "function forbidden",
+      "checks": [],
+      "answer": "```python\ndef parse_ports(lines):\n    ports = []\n    for line in lines:\n        parts = line.split()\n        if len(parts) >= 2:\n            protocol = parts[0]\n            port_str = parts[1]\n            if protocol == 'tcp' and port_str == 'open':\n                try:\n                    port = int(port_str)\n                    ports.append(port)\n                except ValueError:\n                    pass\n    return sorted(set(ports))\n```",
+      "seconds": 7.16
+    }
+  ],
+  "task": "parse_ports",
+  "repo_sha": "25cd77473ece0ab8bac6beca7b16c9fdf234cf0a"
+}
