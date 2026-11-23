@@ -100,5 +100,23 @@ class ToolTests(unittest.TestCase):
             with self.assertRaises(ToolError):
                 self.tools.ssh_probe("example.org")
 
+    def test_search_replace_and_python_syntax(self):
+        self.tools.write_file("script.py", "def answer():\n    return 40\n")
+        initial=json.loads(self.tools.search_text("return"))
+        self.assertEqual(initial["matches"][0]["line"],2)
+        self.assertIn("updated",self.tools.replace_text("script.py","return 40","return 42"))
+        self.assertEqual(self.tools.python_syntax("script.py"),"SYNTAX_OK")
+        self.assertIn("42",self.tools.read_file("script.py"))
+        self.tools.write_file("broken.py","def x(:\n pass\n")
+        self.assertIn("SYNTAX_ERROR",self.tools.python_syntax("broken.py"))
+
+    def test_exact_one_replacement_required(self):
+        self.tools.write_file("twice.txt","same same")
+        with self.assertRaises(ToolError):
+            self.tools.replace_text("twice.txt","same","new")
+        with self.assertRaises(ToolError):
+            self.tools.replace_text("twice.txt","missing","new")
+        self.assertEqual(self.tools.read_file("twice.txt"),"same same")
+
 if __name__ == "__main__":
     unittest.main()

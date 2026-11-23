@@ -1,5 +1,7 @@
 """Restricted local tools for BlackServ Coder. Python standard library only."""
 from __future__ import annotations
+import ast
+import tempfile
 import json
 import os
 import re
@@ -38,6 +40,8 @@ class Tools:
             "list_files": self.list_files, "read_file": self.read_file,
             "write_file": self.write_file, "extract_zip": self.extract_zip,
             "git_status": self.git_status, "git_diff": self.git_diff,
+            "search_text": self.search_text, "replace_text": self.replace_text,
+            "python_syntax": self.python_syntax,
             "web_fetch": self.web_fetch, "web_search": self.web_search,
             "github_repo_info": self.github_repo_info, "ssh_probe": self.ssh_probe,
         }
@@ -70,6 +74,68 @@ class Tools:
             raise ToolError("parent directory does not exist")
         p.write_text(content, encoding="utf-8")
         return "written: " + str(p.relative_to(self.root))
+
+    def search_text(self, query: str, path: str = ".") -> str:
+        """Bounded UTF-8 code search within the workspace."""
+        if not isinstance(query, str) or not 1 <= len(query) <= 200:
+            raise ToolError("invalid search query")
+        base = self.path(path)
+        files = (base,) if base.is_file() else base.rglob("*") if base.is_dir() else ()
+        matches = []
+        scanned = 0
+        for candidate in files:
+            if scanned >= 200 or len(matches) >= 50:
+                break
+            try:
+                rel = str(candidate.relative_to(self.root))
+                safe = self.path(rel)
+                if not safe.is_file() or safe.stat().st_size > 200000:
+                    continue
+                if safe.suffix.lower() not in (".py",".md",".txt",".json",".yaml",".yml",".toml",".c",".h",".js",".ts"):
+                    continue
+                scanned += 1
+                for n,line in enumerate(safe.read_text(encoding="utf-8").splitlines(),1):
+                    if query.lower() in line.lower():
+                        matches.append({"file":rel,"line":n,"text":line[:240]})
+                        if len(matches) >= 50:
+                            break
+            except (OSError, UnicodeError, ToolError):
+                continue
+        return json.dumps({"matches":matches,"files_scanned":scanned})
+
+    def replace_text(self, path: str, before: str, after: str) -> str:
+        """Atomic exact-one-occurrence edit; no arbitrary shell commands."""
+        if not isinstance(before, str) or not isinstance(after, str) or not before:
+            raise ToolError("invalid replacement")
+        if len(before) > 250000 or len(after) > 250000:
+            raise ToolError("replacement too large")
+        p = self.path(path)
+        if not p.is_file() or p.stat().st_size > 1000000:
+            raise ToolError("missing or oversized file")
+        original = p.read_text(encoding="utf-8")
+        if original.count(before) != 1:
+            raise ToolError("replacement must match exactly once")
+        new = original.replace(before,after,1)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=p.parent,
+                                         prefix=".blackserv-edit-", delete=False) as tmp:
+            temp = Path(tmp.name)
+            tmp.write(new)
+        try:
+            os.replace(temp,p)
+        finally:
+            temp.unlink(missing_ok=True)
+        return "updated: " + str(p.relative_to(self.root))
+
+    def python_syntax(self, path: str) -> str:
+        """Parse Python source without running it."""
+        p = self.path(path)
+        if not p.is_file() or p.suffix.lower() != ".py" or p.stat().st_size > 1000000:
+            raise ToolError("expected small Python source file")
+        try:
+            ast.parse(p.read_text(encoding="utf-8"),filename=str(p))
+        except SyntaxError as exc:
+            return f"SYNTAX_ERROR at line {exc.lineno}: {exc.msg}"
+        return "SYNTAX_OK"
 
     def extract_zip(self, archive: str, destination: str) -> str:
         source, dest = self.path(archive), self.path(destination)
@@ -175,6 +241,9 @@ TOOL_SCHEMAS = [
     {"name":"list_files","description":"List entries inside workspace","parameters":{"type":"object","properties":{"path":{"type":"string"}}}},
     {"name":"read_file","description":"Read UTF-8 file inside workspace","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}},
     {"name":"write_file","description":"Write UTF-8 file inside workspace","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"]}},
+    {"name":"search_text","description":"Search UTF-8 source text within workspace","parameters":{"type":"object","properties":{"query":{"type":"string"},"path":{"type":"string"}},"required":["query"]}},
+    {"name":"replace_text","description":"Atomically replace exactly one occurrence in workspace source","parameters":{"type":"object","properties":{"path":{"type":"string"},"before":{"type":"string"},"after":{"type":"string"}},"required":["path","before","after"]}},
+    {"name":"python_syntax","description":"Check Python syntax without executing the program","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}},
     {"name":"extract_zip","description":"Extract bounded ZIP inside workspace","parameters":{"type":"object","properties":{"archive":{"type":"string"},"destination":{"type":"string"}},"required":["archive","destination"]}},
     {"name":"git_status","description":"Read git status","parameters":{"type":"object","properties":{}}},
     {"name":"git_diff","description":"Read unstaged git diff","parameters":{"type":"object","properties":{}}},

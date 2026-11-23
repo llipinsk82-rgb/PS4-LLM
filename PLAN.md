@@ -44,6 +44,11 @@ Working branch: `blackserv/coder-experiments`; deploy changes only after verific
   data and on a real 64-row Qwopus fragment.
 - Full- and linear-attention local *mix* conversion passed synthetic tests,
   including an exact recovery after simulated download interruption.
-- Prepared local 4-shard snapshot download (17.98 GiB); conversion completion,
-  final Garlic output validation and actual PS4 inference not yet proven.
+- Downloaded complete pinned Qwopus checkpoint locally: 4 safetensors
+  shards, 17.98 GiB, MTP present; source file-size/index verification PASS.
+- Started local first-stage mix conversion using resumable tensor journal;
+  full artifact validation, second stage, and Qwopus PS4 inference pending.
+- Existing Garlic 1.20 API responds on the PS4: /health PASS, /v1/models
+  reports Qwen3.5-9B; short Python coding task returned correct source.
+  Garlic 1.21 tool-calling/model switch is still untested on the console.
 - No cloud compute and no PS4/Franek modifications.

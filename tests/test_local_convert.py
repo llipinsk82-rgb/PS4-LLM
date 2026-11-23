@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from blackserv_coder.local_convert import convert_mix
+from blackserv_coder.validate_mix import validate_mix
 from q3 import quantize_q3, interleave_q3
 from q4 import quantize_q4, interleave_q4
 
@@ -64,6 +65,7 @@ class ConverterTests(unittest.TestCase):
             meta=convert_mix(model,outfile)
             blob=outfile.read_bytes()
             self.assertEqual(len(blob),meta["size"])
+            self.assertEqual(validate_mix(outfile)["status"],"pass")
             self.assertEqual(meta["gpu_size"]%4096,0)
             self.assertTrue(outfile.with_suffix(".json").is_file())
             t=meta["tensors"]
@@ -122,6 +124,25 @@ class FakeLinearModel(FakeModel):
 
 
 class LinearConverterTests(unittest.TestCase):
+    def test_validator_rejects_corruption(self):
+        import json
+        from blackserv_coder.validate_mix import validate_mix
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/"bad-mix.bin"
+            convert_mix(FakeModel(),path)
+            jpath=path.with_suffix(".json")
+            original=json.loads(jpath.read_text())
+            changed=json.loads(json.dumps(original))
+            changed["tensors"]["0.wgu"]["size"] += 1
+            jpath.write_text(json.dumps(changed))
+            with self.assertRaises(ValueError):
+                validate_mix(path)
+            jpath.write_text(json.dumps(original))
+            with path.open("r+b") as file:
+                file.truncate(path.stat().st_size-1)
+            with self.assertRaises(ValueError):
+                validate_mix(path)
+
     def test_resume_after_interrupted_tensor(self):
         class InterruptOnce(FakeModel):
             def __init__(self):
@@ -153,6 +174,7 @@ class LinearConverterTests(unittest.TestCase):
             path=Path(d)/"lin-mix.bin"
             meta=convert_mix(model,path)
             blob=path.read_bytes()
+            self.assertEqual(validate_mix(path)["status"],"pass")
             t=meta["tensors"]
             a=model.prefix+"layers.0.linear_attn."
             w=np.concatenate([model.arrays[a+k+".weight"] for k in

@@ -8,7 +8,8 @@ on the console. Our own code lives in `blackserv_coder/`.
 ## Currently implemented and tested
 
 - Tool-call loop with a per-task step limit, using Garlic 1.21's API protocol.
-- Workspace-scoped read/write/list, bounded ZIP extraction, read-only Git.
+- Workspace-scoped read/write/list, exact-one-match text edits, source search,
+  static Python syntax checks, bounded ZIP extraction and read-only Git.
 - Public Bing RSS web search, restricted HTTPS documentation fetching.
 - GitHub **public repository metadata** without any SYSTEM account token.
 - Read-only SSH checks (`uptime`, `uname`, `disk`) **only** for
@@ -17,7 +18,8 @@ on the console. Our own code lives in `blackserv_coder/`.
 - Tests use an API response stub; they do not establish model performance.
 
 **Not implemented:** arbitrary shell/terminal commands, GitHub write operations,
-full file search/edit patches, unattended execution of tests, PS4 inference.
+unrestricted terminal execution, unattended execution of untrusted tests,
+Qwopus PS4 inference and model-dependent tool-call verification.
 These must be scoped to a non-privileged runner; the current SentinelX agent
 runs as Windows SYSTEM and cannot safely execute arbitrary model-produced code.
 
@@ -47,6 +49,8 @@ $py = 'C:\Users\lukas\AppData\Local\Programs\Python\Python313\python.exe'
 
 The first validation **passed** on Dell: 427 tensors, BF16, MTP.
 No conversion, upload or PS4 benchmark has happened.
+
+Use `python -m blackserv_coder.evaluate --api http://PS4_IP:8080/v1 --label Qwen-baseline --out baseline.json` to test model tool-selection without executing any function. Garlic 1.21 is needed for that tool-calling benchmark; version 1.20 does not provide the same function-calling API.
 
 See `PLAN.md` for gates. Garlic upstream remains tracked separately and the
 project preserves GPL-3.0 copyright and license information.

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "list",
+    "prompt": "Show me the files in the current workspace.",
+    "tool": "list_files"
+  },
+  {
+    "id": "read",
+    "prompt": "Open README.md and summarize its purpose.",
+    "tool": "read_file"
+  },
+  {
+    "id": "edit",
+    "prompt": "Write 'hello world' into a new file named hello.txt.",
+    "tool": "write_file"
+  },
+  {
+    "id": "zip",
+    "prompt": "Unpack source.zip into the existing unpacked directory.",
+    "tool": "extract_zip"
+  },
+  {
+    "id": "gitstatus",
+    "prompt": "Check what branch I am on and whether there are uncommitted changes.",
+    "tool": "git_status"
+  },
+  {
+    "id": "gitdiff",
+    "prompt": "Inspect the current uncommitted code diff before making changes.",
+    "tool": "git_diff"
+  },
+  {
+    "id": "search",
+    "prompt": "Find the latest Python 3 documentation using an internet search.",
+    "tool": "web_search"
+  },
+  {
+    "id": "web",
+    "prompt": "Fetch and read https://docs.python.org/3/library/pathlib.html.",
+    "tool": "web_fetch"
+  },
+  {
+    "id": "github",
+    "prompt": "Look up public metadata for the GitHub repository llipinsk82-rgb/PS4-LLM.",
+    "tool": "github_repo_info"
+  },
+  {
+    "id": "ssh",
+    "prompt": "Check disk utilization on my pre-approved remote host server.example.com using the permitted SSH check.",
+    "tool": "ssh_probe"
+  }
+]
