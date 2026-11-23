@@ -322,6 +322,8 @@ static int think_n, turn_cap, think_cut, think_saved, think_pos0, think_answer;
 static double think_t_ask, think_t0, think_t1;
 static char think_text[32768];
 static size_t think_len;
+// 1.21 API: prefix KV snapshot lives in the dictation work memory; invalidate it when console uses the engine.
+static int api_snap_n;
 static uint32_t hist_ids[MAX_REPLY + 16];   // the turn as the model keeps it: an empty <think></think>, the answer
 static int hist_n, hist_done;
 static void start_turn(const char* user_text);
@@ -539,6 +541,7 @@ static void think_toggle(void) {
 
 static int think_save(void) {
     uint64_t need = engine_state_size(&eng);
+    api_snap_n = 0;
     if (!eng.asr.ws_end || eng.asr.ws_end - eng.asr.ws_begin < need) return 0;
     double t0 = now();
     if (engine_state_copy(&eng, eng.asr.ws_begin, 1)) {
@@ -685,6 +688,7 @@ static void system_ahead(int tokens) {
     if (sys_pre == 0) {
         sys_n = system_ids(sys_ids, 1024);
         engine_reset(&eng);
+        api_snap_n = 0;
     }
     int k = sys_n - sys_pre < tokens ? sys_n - sys_pre : tokens;
     uint32_t next;
@@ -704,6 +708,7 @@ static void start_turn(const char* user_text) {
     int n = 0, max = 8192, think = think_on && !in_voice_mode && eng.qwen35;
     think_t_ask = now();
     sys_pre = 0;   // (a system prompt half read ahead is read again below)
+    api_snap_n = 0;
     if (pos == 0) {
         engine_reset(&eng);   // a new conversation: clear the Gated DeltaNet states
         n = system_ids(ids, max);
@@ -1130,6 +1135,7 @@ static void asr_wait(void);
 
 static int voice_to_text(uint32_t button, DrawUnder under, char* text, int max) {
     text[0] = 0;
+    api_snap_n = 0;
     asr_wait();   // (after a Python program the dictation weights are read back first)
     if (!eng.asr.ready) {
         toast(S_ASR_OFF);
@@ -1518,6 +1524,7 @@ static void asr_wait(void) {
 }
 
 static void run_python(void) {
+    api_snap_n = 0;
     asr_wait();   // (a reload still running from the last program)
     asr_release(&eng);
     py_lent = (uint8_t*)asr_lent(&eng, &py_lent_size);
@@ -1676,6 +1683,7 @@ static void spec_lend(void) {
 
 static void voice_mode(void) {
     in_voice_mode = 1;
+    api_snap_n = 0;
 #ifdef GARLIC_SPEC
     if (spec_lent) {   // the MTP head had T3's weights memory: T3 reads its weights again (~3.5 s)
         double t0 = now();
@@ -1943,11 +1951,13 @@ int main(void) {
     view.temperature = 0.7f;
     think_config();
     api_set_model(MODEL_NAME);
+    api_set_context((int)eng.max_seq);
     api_config();   // the OpenAI-compatible API (api.h), if it was left on; its jobs run in the loop below
 
     uint32_t prev = 0;
     int scroll_held = 0;
     for (;;) {
+        api_console_busy(generating);
         ApiJob* api_job_now = !generating && !in_voice_mode ? api_take() : NULL;
         if (api_job_now) {   // an API request: the model answers it now, the chat waits
             api_job(api_job_now);
@@ -1963,18 +1973,22 @@ int main(void) {
         } else if (pressed & (ORBIS_PAD_BUTTON_CROSS | ORBIS_PAD_BUTTON_OPTIONS)) {
             static char text[2048];
             int cross = (pressed & ORBIS_PAD_BUTTON_CROSS) != 0;
+            api_console_busy(1);
             if (cross ? keyboard(text, 1500, 0) : ask_user(text, sizeof(text))) {
                 say("user wrote %d bytes", (int)strlen(text));
                 start_turn(text);
             }
             prev = read_buttons();
         } else if (pressed & ORBIS_PAD_BUTTON_L1) {
+            api_console_busy(1);
             voice_mode();
             prev = read_buttons();
         } else if ((pressed & ORBIS_PAD_BUTTON_R1) && code_msg() >= 0) {
+            api_console_busy(1);
             run_python();
             prev = read_buttons();
         } else if (pressed & ORBIS_PAD_BUTTON_SQUARE) {
+            api_console_busy(1);
             push_to_talk();
             prev = read_buttons();
         } else if (pressed & ORBIS_PAD_BUTTON_TRIANGLE) {
