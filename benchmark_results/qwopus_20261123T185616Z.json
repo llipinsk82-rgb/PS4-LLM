@@ -1,0 +1,65 @@
+{
+  "timestamp_utc": "20261123T185616Z",
+  "host": "192.168.1.120",
+  "api_model": "Qwen3.5-9B",
+  "results": [
+    {
+      "name": "clamp",
+      "pass": true,
+      "seconds": 2.52,
+      "detail": "3 code checks passed",
+      "response": "```python\ndef clamp(x, lo, hi):\n    if x < lo:\n        return lo\n    elif x > hi:\n        return hi\n    else:\n        return x\n```"
+    },
+    {
+      "name": "leap",
+      "pass": true,
+      "seconds": 2.51,
+      "detail": "4 code checks passed",
+      "response": "```python\ndef leap(y):\n    return (y % 4 == 0 and y % 100 != 0) or (y % 400 == 0)\n```"
+    },
+    {
+      "name": "discount",
+      "pass": true,
+      "seconds": 1.67,
+      "detail": "3 code checks passed",
+      "response": "def discount(price, pct):\n    return price * (100 - pct) / 100"
+    },
+    {
+      "name": "ordering",
+      "pass": true,
+      "seconds": 0.85,
+      "detail": "expect B,A,C,D",
+      "response": "B,A,C,D"
+    },
+    {
+      "name": "math",
+      "pass": true,
+      "seconds": 0.77,
+      "detail": "expect 12",
+      "response": "12"
+    },
+    {
+      "name": "extract",
+      "pass": false,
+      "seconds": 1.45,
+      "detail": "bad JSON",
+      "response": "```json\n[\"FR-02\", \"FR-04\"]\n```"
+    },
+    {
+      "name": "log",
+      "pass": true,
+      "seconds": 0.94,
+      "detail": "expect 8775",
+      "response": "8775"
+    },
+    {
+      "name": "tool_loop",
+      "pass": true,
+      "seconds": 6.2,
+      "response": "QWOPUS_TOOL_OK_123"
+    }
+  ],
+  "passed": 7,
+  "attempted": 8,
+  "planned": 8
+}

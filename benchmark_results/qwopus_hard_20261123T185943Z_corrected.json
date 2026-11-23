@@ -1,0 +1,53 @@
+{
+  "host": "192.168.1.120",
+  "model": "Qwen3.5-9B",
+  "utc": "2026-11-23T18:59:01.780291+00:00",
+  "tests": [
+    {
+      "id": "H1",
+      "name": "merge_intervals",
+      "pass": false,
+      "detail": "unsafe call",
+      "answer": "```python\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n\n    # Sort intervals by start time using only len and range\n    intervals.sort(key=lambda x: x[0])\n\n    merged = [intervals[0]]\n\n    for current in intervals[1:]:\n        last = merged[-1]\n\n        # Check if intervals overlap: current start <= last end\n        if current[0] <= last[1]:\n            # Merge them: new end is max of both ends\n            new_end = max(last[1], current[1])\n            merged[-1] = [last[0], new_end]\n        else:\n            # No overlap, add current interval\n            merged.append(current)\n\n    return merged\n```",
+      "rerun": "max_tokens 800 (previously 240, truncated)"
+    },
+    {
+      "id": "H2",
+      "name": "two_sum",
+      "pass": true,
+      "detail": "4/4 cases",
+      "seconds": 10.51,
+      "answer": "```python\ndef two_sum(nums, target):\n    # We need the lexicographically first pair of indices [i, j] where i < j.\n    # Lexicographically first means we want the smallest possible i, \n    # and then the smallest possible j for that i.\n    \n    # Since we only have 'len' and 'range', we cannot use a dictionary \n    # to store values and their indices directly.\n    \n    # Strategy:\n    # Iterate i from 0 to len(nums) - 2.\n    # For each i, iterate j from i + 1 to len(nums) - 1.\n    # Check if nums[i] + nums[j] == target.\n    # The first time this condition is met, we have found the lexicographically first pair.\n    \n    n = len(nums)\n    \n    for i in range(n - 1):\n        for j in range(i + 1, n):\n            if nums[i] + nums[j] == target:\n                return [i, j]\n                \n    return []\n```"
+    },
+    {
+      "id": "H3",
+      "name": "is_valid_brackets",
+      "pass": true,
+      "detail": "5/5 cases",
+      "seconds": 9.56,
+      "answer": "```python\ndef is_valid_brackets(s):\n    # Map opening brackets to their corresponding closing brackets\n    pairs = {\n        '(': ')',\n        '[': ']',\n        '{': '}'\n    }\n    \n    # Stack to keep track of expected closing brackets\n    stack = []\n    \n    for char in s:\n        if char in pairs:\n            # It's an opening bracket; push the expected closing bracket onto the stack\n            stack.append(pairs[char])\n        elif char in pairs.values():\n            # It's a closing bracket; check if it matches the top of the stack\n            if not stack:\n                return False\n            if stack[-1] == char:\n                stack.pop()\n            else:\n                return False\n        else:\n            # Input contains non-bracket characters, which violates the problem constraint\n            return False\n    \n    # If the stack is empty, all brackets were properly matched\n    return len(stack) == 0\n```"
+    },
+    {
+      "id": "H4",
+      "name": "binary_search",
+      "pass": true,
+      "detail": "5/5 cases",
+      "seconds": 7.83,
+      "answer": "```python\ndef binary_search(nums, target):\n    left = 0\n    right = len(nums)\n    while left < right:\n        mid = (left + right) // 2\n        if nums[mid] == target:\n            return mid\n        if nums[mid] < target:\n            left = mid + 1\n        else:\n            right = mid\n    return -1\n```\n\n**Key fix:** In the original buggy code, when `nums[mid] < target`, setting `left = mid` causes an infinite loop because `mid` is always less than `right`, so `left` never advances past `mid`. The correct behavior is to set `left = mid + 1` to ensure progress toward the right half."
+    },
+    {
+      "id": "H5",
+      "name": "group_counts",
+      "pass": true,
+      "detail": "3/3 cases",
+      "seconds": 2.73,
+      "answer": "```python\ndef group_counts(words):\n    counts = {}\n    for word in words:\n        if word in counts:\n            counts[word] += 1\n        else:\n            counts[word] = 1\n    return counts\n```"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "attempted": 5,
+    "planned": 5
+  },
+  "scoring_notes": "Corrected markdown fence parser, safe method allowlist, and H1 token cap rerun. Regraded all 5."
+}
