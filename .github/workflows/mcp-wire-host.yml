@@ -1,0 +1,30 @@
+name: MCP wire host tests
+on:
+  push:
+    branches: [blackserv/sentinel-connector-spike]
+    paths:
+      - 'pc/native_mcp/**'
+      - 'tests/mcp_wire_test.c'
+      - 'chat/api_proto.c'
+      - 'chat/api_proto.h'
+      - '.github/workflows/mcp-wire-host.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile and run with Garlic JSON parser
+        run: |
+          cc -std=gnu11 -O1 -Wall -Wextra -Werror \
+            -Ichat -Ipc/native_mcp \
+            pc/native_mcp/mcp_wire.c tests/mcp_wire_test.c chat/api_proto.c \
+            -lm -o /tmp/mcp_wire_test
+          /tmp/mcp_wire_test
