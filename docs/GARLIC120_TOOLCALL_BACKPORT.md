@@ -3,7 +3,7 @@
 ## Scope
 - Base: upstream Garlic LLM commit `49f08c6` (version 1.20).
 - Protocol/API backport: files `chat/api.c`, `api.h`, `api_proto.c`, `api_proto.h`, `api_run.inc`, `assets/openapi.json` from upstream `ab4c5fe` (1.21).
-- `chat/main.c` gets **only** the API integration for context length, busy reporting, and model-state snapshot invalidation. The version 1.20 GPU engine, shaders, tokenizer and UI are unchanged.
+- `chat/main.c` gets API integration for context length, busy reporting, and snapshot invalidation. `chat/engine.c` has a five-line path-priority guard so explicit `/data/garlic/models/` weights never silently fall back to old `/app0/models` weights. All GPU compute code, shaders, tokenizer and UI remain unchanged from 1.20.
 - No Sentinel_BS, SSH tools, remote executor or public cloud credentials.
 - Function calling is OpenAI API tool-call *exchange*: the client receives a requested tool call and returns its result. This build does **not** execute privileged tools on the PS4.
 
@@ -31,14 +31,16 @@ The PS4 FTP `SIZE` command wraps at 2^32 bytes for weights larger than 4 GiB. Th
 - Host end-to-end HTTP API including tools, streaming and busy handling: 105 checks, 0 failed.
 - External model index rewrite safety: 5 unit tests PASS.
 - PS4 actual model inference: **NOT TESTED**.
-- PS4 **native PKG build**: PASS on Dell with OpenOrbis v0.5.3, Zig 0.14.1, local .NET runtime 8.0.34. App-only PKG: 41,156,608 B, SHA-256 `4500AF01D0F3A24919F6D53AA6367FC62BE74AB0F19B5BAF9240333D57E3E31A`.
-- PS4 **FTP staging**: PASS. File `/data/pkg/GarlicCoder-120-Qwopus-toolcalls-d0474c7.pkg`, size matched; SHA-256 verified by **reading the staged package back** from PS4.
+- PS4 **native PKG build**: PASS on Dell with OpenOrbis v0.5.3, Zig 0.14.1, local .NET runtime 8.0.34. App-only PKG: 41,156,608 B, SHA-256 `D6361D3E000A99F76037B08E6F2A9F28B3C32D4B7244AA9AAC357CA548869FC8`.
+- PS4 **FTP staging**: PASS. File `/data/pkg/GarlicCoder-120-Qwopus-toolcalls-33a43eb.pkg`, size matched; SHA-256 verified by **reading the staged package back** from PS4.
 - PS4 **native install/launch/inference**: **NOT TESTED**. Installing the package is a separate step.
+- The old, non-installed staging PKG was SHA-checked and removed after the corrected new PKG passed upload + read-back.
+- After installation and app launch, check `/data/ps4ai_log.txt` for the exact QwopusFlash weights path. Enable the API with L3, then run `python tests/live_ps4_smoke.py` from the Dell. The script checks real coding inference, real `tool_calls` and a safe simulated tool-result round-trip; it never executes privileged tools.
 - PS4 port 9295 (Remote Play) responded on 2026-11-23; remote package installer (12800) and Garlic API (8080) did not respond then. Do not probe BinLoader port 9090.
 - Official chiaki-ng 1.10.1 portable for Windows was downloaded and SHA-256-verified at `D:\BlackServ_Coder\tools\chiaki-ng\chiaki-ng-Win\chiaki.exe`. No PS4 pairing, Remote Play streaming or console control verified yet.
 
 ## Safety and rollout
-- No changes to PS4 until native PKG is built and verified.
+- No app installation or execution on PS4 before the native PKG is built and verified.
 - GoldHEN FTP works on port 2121. Do **not** probe GoldHEN BinLoader port 9090, which is one-shot.
 - Before first live tool-call test, enable the Garlic API via L3 and use its local IP and port 8080.
 - If API is exposed on an untrusted LAN, configure `/data/garlic_api_key.txt` on PS4. Do not expose port 8080 to the internet.
