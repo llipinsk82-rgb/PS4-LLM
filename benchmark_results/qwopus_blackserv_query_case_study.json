@@ -1,0 +1,21 @@
+{
+  "source": "llipinsk82-rgb/search_engine backend/query.py, default main, GitHub read-only",
+  "model": "Qwen3.5-9B",
+  "attempts": [
+    {
+      "pass": true,
+      "note": "5/5",
+      "checks": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "answer": "```python\ndef contains_all_terms(value: str, terms: list[str]) -> bool:\n    return set(term.lower() for term in terms).issubset(set(query_tokens(value)))\n```",
+      "seconds": 3.22
+    }
+  ],
+  "pass": true,
+  "diff": "--- a/backend/query.py:contains_all_terms\n+++ b/backend/query.py:contains_all_terms\n@@ -1,2 +1,2 @@\n def contains_all_terms(value: str, terms: list[str]) -> bool:\n-    return set(terms).issubset(set(query_tokens(value)))\n+    return set(term.lower() for term in terms).issubset(set(query_tokens(value)))\n"
+}

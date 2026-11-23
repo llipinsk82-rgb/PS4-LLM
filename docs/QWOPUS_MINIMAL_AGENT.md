@@ -51,3 +51,18 @@ Choose a small, real tracked source bug with existing deterministic tests.
 Supply *only relevant* source to the model, stage changes in a disposable
 worktree, run project tests and independent regression checks, then present
 a diff for approval. Do not grant SSH/production privileges.
+
+## BlackServ source case study (read-only, 2026-11-23)
+Source: GitHub llipinsk82-rgb/search_engine, backend/query.py on main,
+retrieved read-only. The existing contains_all_terms helper lowercases the
+haystack through query_tokens but assumes caller terms are already lowercase.
+A case-insensitive input robustness improvement was proposed and tested.
+PS4 model produced a one-line correction on its first attempt:
+set(term.lower() for term in terms).issubset(set(query_tokens(value)))
+Independent restricted test harness: 3/3 selftests PASS, 5/5 model
+proposal cases PASS. Evidence in tests/qwopus_blackserv_query_case_study.py
+and benchmark_results/qwopus_blackserv_query_case_study.json.
+This is a candidate hardening change, NOT a confirmed production defect:
+current callers may already normalize terms. No search_engine branch, source,
+Git history or deployment was changed. The case study uses a frozen copy of
+the fetched source and must be refreshed before any real integration.
