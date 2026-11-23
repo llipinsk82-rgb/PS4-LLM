@@ -32,6 +32,9 @@ The engine retains upstream 1.20 behavior: if the PKG contains `/app0/models/<ba
 - Base upstream Garlic 1.20 API host tests: 57 + 103 checks, 0 failed.
 - Qwopus index rewrite safety tests: 5 PASS.
 - Native build from original 1.20 sources: PASS, app-only package 41,091,072 bytes.
+- Package SHA-256: `D477F1B5E3E34E73D7BD4B0D7ECCD07D806D14B81A96241A4FD930C9AF3F1FEC`.
+- PS4 FTP staging: PASS, `/data/pkg/Garlic120-QwopusFlash-MODEL-ONLY-4dec5c6.pkg`. Verified size and read-back SHA-256 against the original Dell package.
+- Installed Garlic app on the PS4 was not modified. No launch or inference yet.
 - Physical PS4 model inference and package installation: NOT TESTED YET.
 
 ## Safety
