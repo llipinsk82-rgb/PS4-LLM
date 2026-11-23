@@ -5,6 +5,7 @@ on:
     paths:
       - 'pc/native_mcp/**'
       - 'tests/mcp_wire_test.c'
+      - 'tests/mcp_client_test.c'
       - 'chat/api_proto.c'
       - 'chat/api_proto.h'
       - '.github/workflows/mcp-wire-host.yml'
@@ -21,10 +22,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Compile and run with Garlic JSON parser
+      - name: Compile and test against real Garlic JSON parser
         run: |
           cc -std=gnu11 -O1 -Wall -Wextra -Werror \
             -Ichat -Ipc/native_mcp \
             pc/native_mcp/mcp_wire.c tests/mcp_wire_test.c chat/api_proto.c \
             -lm -o /tmp/mcp_wire_test
           /tmp/mcp_wire_test
+          cc -std=gnu11 -O1 -Wall -Wextra -Werror \
+            -Ichat -Ipc/native_mcp \
+            pc/native_mcp/mcp_wire.c pc/native_mcp/mcp_client.c \
+            tests/mcp_client_test.c chat/api_proto.c \
+            -lm -o /tmp/mcp_client_test
+          /tmp/mcp_client_test
