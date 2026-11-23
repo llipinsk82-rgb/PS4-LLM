@@ -32,3 +32,18 @@ Working branch: `blackserv/coder-experiments`; deploy changes only after verific
 - Dell isolated dependency folder: `D:\BlackServ_Coder\.deps` (NumPy).
 - Latest metadata validation: `Jackrong/Qwopus3-5-9B-Coder-Flash: Qwen3.5-9B's shapes (427 tensors checked, BF16, text tensors under model.language_model.*). MTP head: yes.`
 - Garlic 1.21 API supports function calls and model selection; version 1.21 is experimental.
+
+## Execution ledger (2026-11-23 UTC)
+
+- Checked live Dell repository: `blackserv/coder-experiments`, clean at
+  `c82d627` before work; original Garlic kept as upstream.
+- Pinned Qwopus HF snapshot at
+  `a972c214613d831b6c03b4665c0c97f2a3f90848`;
+  checkpoint schema validation PASS (427 tensors, MTP).
+- Local streamed q3i/q4i/q4row binary writers PASS on reference synthetic
+  data and on a real 64-row Qwopus fragment.
+- Full- and linear-attention local *mix* conversion passed synthetic tests,
+  including an exact recovery after simulated download interruption.
+- Prepared local 4-shard snapshot download (17.98 GiB); conversion completion,
+  final Garlic output validation and actual PS4 inference not yet proven.
+- No cloud compute and no PS4/Franek modifications.

@@ -178,8 +178,9 @@ def write_quantized_parts(checkpoint, parts: list[tuple[str, int, int]], out,
         pending = []
         available = 0
         for name, start, end in parts:
-            for offset in range(start, end, 64):
-                sub = tensor_rows(checkpoint, name, offset, min(end, offset + 64))
+            # Batch network reads; quantize locally in 64-row output tiles.
+            for offset in range(start, end, 512):
+                sub = tensor_rows(checkpoint, name, offset, min(end, offset + 512))
                 at = 0
                 while at < sub.shape[0]:
                     take = min(64 - available, sub.shape[0] - at)

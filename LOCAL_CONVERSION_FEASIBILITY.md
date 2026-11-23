@@ -72,3 +72,41 @@ are not aligned. This is required for Garlic's combined QKV and MLP gate/up
 matrices. Synthetic three-part, non-aligned boundary checks pass bytewise
 against the reference Q3/Q4 interleavers for q3i/q4i/q4row. Full conversion
 and actual PS4 inference remain pending.
+
+## Local first-stage converter (prototype)
+
+`python -m blackserv_coder.local_convert` now constructs Garlic's *mixed*
+intermediate artifact, with the same ordered records and layout as the
+upstream Modal reference: norm vectors, QKV, linear-attention projections,
+gate/up Q3, down Q4, LM head Q4 and row-wise input embeddings Q4.
+
+A resumable progress journal (`.progress.json`) checkpoints every completed
+tensor. Interrupted conversion reopens the `.bin.part` file at the last
+verified completed offset; an existing finished `.bin` is never overwritten.
+
+Full-attention and linear-attention synthetic miniature checkpoints passed
+byte-for-byte comparisons for representative mixed matrix records. A
+simulated mid-run disconnection resumed and produced identical output.
+
+**Important:** no complete 9B weight conversion has passed yet. No PS4
+artifact, model inference, or claim of an under-32-GiB peak is validated.
+The upstream `pc/convert_9b_q4s.py` is retained for the second stage.
+
+Pinned source revision:
+`Jackrong/Qwopus3-5-9B-Coder-Flash@a972c214613d831b6c03b4665c0c97f2a3f90848`
+(4 shards, metadata reports 17.98 GiB of safetensors; public and ungated
+at the time of testing). Local snapshot directory:
+`D:\\BlackServ_Coder\\models\\QwopusFlash-a972c214`.
+
+Run after a complete, checked local snapshot is present:
+
+```powershell
+$env:PYTHONPATH='D:\BlackServ_Coder\.deps'
+$py='C:\Users\lukas\AppData\Local\Programs\Python\Python313\python.exe'
+& $py -m blackserv_coder.local_convert --src 'D:\BlackServ_Coder\models\QwopusFlash-a972c214' --out 'D:\BlackServ_Coder\garlic-llm\models\QwopusFlash-mix.bin'
+& $py pc/convert_9b_q4s.py --mix=models/QwopusFlash-mix.bin --out=models/QwopusFlash
+& $py pc/upload_model.py --model models/QwopusFlash --dry-run
+```
+
+Nothing in these commands flashes the PS4; the last command validates locally
+and does not upload. Real PS4 tests require a separate verified device session.
