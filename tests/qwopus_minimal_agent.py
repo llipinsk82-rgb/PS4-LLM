@@ -14,7 +14,7 @@ MAX_FILES=80
 MAX_TURNS=3
 
 def git_read(args):
-    p=subprocess.run(["git","-C",str(ROOT),*args],capture_output=True,text=True,timeout=12)
+    p=subprocess.run(["git","-C",str(ROOT),*args],capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=12)
     if p.returncode:raise RuntimeError("git read failed")
     return p.stdout
 

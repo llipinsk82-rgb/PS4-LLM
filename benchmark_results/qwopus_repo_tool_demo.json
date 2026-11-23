@@ -1,0 +1,13 @@
+{
+  "answer": "One matching file path is: `tests/qwopus_blackserv_query_case_study.py`",
+  "events": [
+    {
+      "name": "repo_search",
+      "args": {
+        "needle": "def grade"
+      },
+      "ok": true
+    }
+  ],
+  "steps": 2
+}

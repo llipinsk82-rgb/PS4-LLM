@@ -66,3 +66,14 @@ This is a candidate hardening change, NOT a confirmed production defect:
 current callers may already normalize terms. No search_engine branch, source,
 Git history or deployment was changed. The case study uses a frozen copy of
 the fetched source and must be refreshed before any real integration.
+
+## Read-only model-selected repository tools
+Implemented tests/qwopus_repo_tool_agent.py with three function tools:
+repo_list, repo_read, repo_search. Tool dispatch is host-side allowlisted,
+with path, size and step limits; no shell, write, Git mutation, SSH or deploy.
+Live PS4 tool demo: model called repo_search with needle 'def grade',
+received the tool result and returned a matching tracked path in two turns.
+Selftest 5/5 PASS. Evidence: benchmark_results/qwopus_repo_tool_demo.json.
+Fixed a Windows cp1250 Git subprocess decoding failure by explicitly
+requesting UTF-8 with replacement for malformed bytes.
+This establishes a narrow, working model->read-only tool->answer cycle.
