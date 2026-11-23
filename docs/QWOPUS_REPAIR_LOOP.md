@@ -37,3 +37,23 @@ and up to three further attempts are permitted. This is a narrow benchmark runne
 Test API multi-turn memory with an unambiguous control question, then inspect
 how Garlic 1.20 renders messages and system roles. Fix prompt serialization if
 needed before concluding model-level failure. Keep tool executor read-only.
+
+## Follow-up: history and diagnosis probes (2026-11-23 22:20 UTC)
+Read-only source review of `chat/api_run.inc` and `chat/api_proto.c` confirms the API
+iterates over all supplied conversation messages. Live probe results:
+- Single-turn control BLUE: PASS.
+- Multi-turn override BLUE -> GREEN: PASS.
+- Multi-turn memory codeword ORCHID-729: PASS.
+- Multi-turn explicit code correction: FAIL (still selected wrong token).
+Thus history delivery is operational, but this does not establish robust code self-repair.
+
+Two fresh prompt ablations for the real BS2 port parser also FAIL:
+- Explicit root cause: generated `set()`, `seen.add()`, `list()` outside permitted calls, and retained wrong protocol comparison.
+- Fresh restatement: generated `set()` outside permitted calls, compared port string against integer range, and failed to filter closed ports.
+These are substantive model mistakes, not just formatting.
+Evidence: `benchmark_results/qwopus_history_probe_20261123.json`,
+`benchmark_results/qwopus_repair_prompt_probe_20261123.json`.
+
+CTO conclusion: narrow deterministic coding is possible, but automatic self-repair
+is not validated. Next: provide *actual vs expected* feedback, test additional
+models/tasks, and avoid autonomous production changes.

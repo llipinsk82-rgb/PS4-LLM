@@ -1,0 +1,22 @@
+{
+  "utc": "2026-11-23T22:21:45.223720+00:00",
+  "model": "Qwen3.5-9B",
+  "tests": [
+    {
+      "name": "explicit_root_cause",
+      "pass": false,
+      "note": "Disallowed function call",
+      "checks": [],
+      "answer": "```python\ndef parse_ports(lines):\n    seen = set()\n    for line in lines:\n        parts = line.split()\n        if len(parts) >= 2:\n            protocol = parts[0]\n            status = parts[1]\n            if protocol == 'tcp' and status == 'open':\n                port_str = protocol.split('/')[1]\n                port = int(port_str)\n                if port not in seen:\n                    seen.add(port)\n    return sorted(list(seen))\n```",
+      "seconds": 7.52
+    },
+    {
+      "name": "fresh_reformulation",
+      "pass": false,
+      "note": "Disallowed function call",
+      "checks": [],
+      "answer": "```python\ndef parse_ports(lines):\n    ports = []\n    for line in lines:\n        parts = line.split()\n        if len(parts) >= 2:\n            protocol_port = parts[0]\n            protocol, port_str = protocol_port.split('/')\n            if protocol == 'tcp' and port_str in range(0, 65536):\n                ports.append(int(port_str))\n    return sorted(set(ports))\n```",
+      "seconds": 5.25
+    }
+  ]
+}
