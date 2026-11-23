@@ -136,7 +136,7 @@ def main():
         parser.error("API base must end with /v1")
     if not args.skip_ftp_log:
         check_boot_log(url.hostname)
-    check_live(args.api.rstrip("/"), os.environ.get("GARLIC_API_KEY"))
+    check_live(args.api.rstrip("/")[:-3], os.environ.get("GARLIC_API_KEY"))
 
 
 if __name__ == "__main__":
