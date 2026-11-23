@@ -1,10 +1,10 @@
 # Native MCP wire layer — staged for PS4
 
-Status: **experimental, not connected, no production access**.
+Status: **experimental, not connected, no production access**. The protocol and transport-neutral session client compile independently of the PS4 application.
 
 ## Scope and boundaries
 
-- Native C JSON-RPC MCP message codec under pc/native_mcp/. It reuses the
+- Native C JSON-RPC MCP message codec AND bounded session client under pc/native_mcp/. The code reuses the
   existing Garlic 1.21-backported chat/api_proto.h and api_proto.c.
 - The app's existing GPU engine and QwopusFlash model files are unchanged.
 - Nothing has been deployed or installed on PS4. This code is deliberately
@@ -31,6 +31,8 @@ This is a client-side safety guard, NOT a substitute for server-side
 authorization. For real access, Sentinel_BS Hub must independently enforce
 allowed client identity, hosts, tools, and arguments.
 
+The `McpClient` callback handles `initialize` → notification (HTTP 202) → `tools/list` → `tools/call` and accepts at most **8 model tool requests per turn**, rejecting wrong response IDs and HTTP status codes. The callback is **not a network implementation**; a future PS4 adapter must enforce authenticated HTTPS, TLS certificate checks, bounded IO and timeouts.
+
 Input limits: 4 KiB arguments, 128 KiB MCP reply, bounded identifiers,
 no duplicate/extra tool arguments, tool names allowlisted, JSON-RPC id
 and protocol version checked, JSON-RPC errors denied.
@@ -45,12 +47,18 @@ parser; from the repository root:
       pc/native_mcp/mcp_wire.c tests/mcp_wire_test.c chat/api_proto.c \
       -lm -o mcp_wire_test
     ./mcp_wire_test
+    cc -std=gnu11 -O1 -Wall -Wextra -Werror \
+      -Ichat -Ipc/native_mcp \
+      pc/native_mcp/mcp_wire.c pc/native_mcp/mcp_client.c \
+      tests/mcp_client_test.c chat/api_proto.c \
+      -lm -o mcp_client_test
+    ./mcp_client_test
 
-An independent developer-box check used a json-c-based parser shim and
-ran **30 checks, 0 failed**, including denied write tools, malformed ids,
+An independent offline check used a json-c-based parser shim and
+ran **52 checks, 0 failed**, including denied write tools, malformed ids,
 wrong response ids, errors, and oversized responses. This is NOT a claim
 that the real Garlic parser, PS4 binary, TLS, OAuth or live MCP service
-has passed. Repeat with the real api_proto.c when build access is available.
+has passed. The GitHub read-only CI workflow also compiles these tests against the REAL `chat/api_proto.c`; check its latest run on the spike branch for the verified status. PS4 native build remains blocked until the development Dell is reachable.
 
 ## Next native integration work
 
