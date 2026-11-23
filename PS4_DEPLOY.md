@@ -14,8 +14,11 @@ No installation or model upload is performed by Dell conversion scripts.
 
 ## Prerequisites and safeguards
 
-1. Retain a verified copy of the publisher's Garlic 1.20 experimental PKG
-   for a true rollback. Document size and SHA-256.
+1. Rollback PKG downloaded from publisher and locally hashed:
+   `D:\\BlackServ_Coder\\packages\\Garlic-LLM-1.20-experimental.pkg`,
+   size 5,662,638,080 bytes, SHA-256
+   `c0e8d289216b277414994b91fc71eefb23fd7ec84ecf1ce18d5dfe3048d82c2f`.
+   Hash is computed locally; no independent publisher SHA published/verified.
 2. Verify publisher's Garlic 1.21 experimental package. Published SHA-256:
    3e32b8c7cb48d0db99d8d42d2272a7a9b0b8e6124ead6ec503ccaf8a2b2b293b.
 3. Verify PS4 free storage for installed 1.21, staged package if applicable

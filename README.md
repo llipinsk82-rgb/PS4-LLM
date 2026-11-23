@@ -1,3 +1,20 @@
+# PS4-LLM · BlackServ Coder
+
+This repository is the **BlackServ Coder** project: a local PS4 coding AI based
+on the open-source [Garlic LLM](https://github.com/leonardo-alegria/garlic-llm)
+engine, with a Qwopus3.5-9B-Coder-Flash fine-tune and a restricted tool agent.
+The coding model's full PS4 deployment remains under test; completed unit tests
+must not be mistaken for a successful live model release.
+
+**Project files:** [agent and tools](BLACKSERV_CODER.md) · [execution plan](PLAN.md) ·
+[local model conversion](LOCAL_CONVERSION_FEASIBILITY.md) ·
+[PS4 deployment and rollback](PS4_DEPLOY.md).
+
+The original Garlic LLM documentation follows below. The upstream GPL-3.0
+license, copyright and attribution are preserved.
+
+---
+
 <p align="center"><img src="docs/logo.svg" width="112" alt="Garlic LLM logo: a garlic bulb on a blue square"></p>
 
 # Garlic LLM
