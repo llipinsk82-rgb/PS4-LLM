@@ -1,0 +1,64 @@
+{
+  "utc": "2026-11-23T21:31:13.895062+00:00",
+  "host": "192.168.1.120",
+  "task_source": "Actual BS2 parse_ports model output from previous PS4 benchmark",
+  "mode": "read-only model, restricted subprocess test, no file writes except benchmark results",
+  "result": {
+    "task": "BS2",
+    "pass": false,
+    "attempts": [
+      {
+        "attempt": 0,
+        "pass": false,
+        "feedback": "Failed test cases (1-based): [1, 3]",
+        "checks": [
+          false,
+          true,
+          false
+        ],
+        "code": "def parse_ports(lines):\n    result = []\n    for line in lines:\n        parts = line.split()\n        if len(parts) >= 2:\n            protocol = parts[0]\n            port_str = parts[1]\n            if protocol == 'tcp' and port_str == 'open':\n                result.append(int(port_str))\n    return sorted(result)",
+        "seconds": 0,
+        "seed": true
+      },
+      {
+        "attempt": 1,
+        "pass": false,
+        "feedback": "Failed test cases (1-based): [1, 3]",
+        "checks": [
+          false,
+          true,
+          false
+        ],
+        "code": "def parse_ports(lines):\n    result = []\n    for line in lines:\n        parts = line.split()\n        if len(parts) >= 2:\n            protocol = parts[0]\n            port_str = parts[1]\n            if protocol == 'tcp' and port_str == 'open':\n                result.append(int(port_str))\n    return sorted(result)",
+        "seconds": 6.84,
+        "finish_reason": "stop"
+      },
+      {
+        "attempt": 2,
+        "pass": false,
+        "feedback": "Failed test cases (1-based): [1, 3]",
+        "checks": [
+          false,
+          true,
+          false
+        ],
+        "code": "def parse_ports(lines):\n    result = []\n    for line in lines:\n        parts = line.split()\n        if len(parts) >= 2:\n            protocol = parts[0]\n            port_str = parts[1]\n            if protocol == 'tcp' and port_str == 'open':\n                result.append(int(port_str))\n    return sorted(result)",
+        "seconds": 8.14,
+        "finish_reason": "stop"
+      },
+      {
+        "attempt": 3,
+        "pass": false,
+        "feedback": "Failed test cases (1-based): [1, 3]",
+        "checks": [
+          false,
+          true,
+          false
+        ],
+        "code": "def parse_ports(lines):\n    result = []\n    for line in lines:\n        parts = line.split()\n        if len(parts) >= 2:\n            protocol = parts[0]\n            port_str = parts[1]\n            if protocol == 'tcp' and port_str == 'open':\n                result.append(int(port_str))\n    return sorted(result)",
+        "seconds": 9.71,
+        "finish_reason": "stop"
+      }
+    ]
+  }
+}
