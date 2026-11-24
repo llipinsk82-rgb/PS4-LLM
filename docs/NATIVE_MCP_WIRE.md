@@ -127,3 +127,52 @@ actual PS4 SSL/HTTP context lifecycle, native inference/tool loop, physical PS4
 positive and negative certificate/hostname tests with a dedicated test service,
 server-enforced read-only client authorization, owner pairing, cancellation and
 full app link/package. Do not use real Sentinel_BS credentials until these pass.
+
+## On-console inference integration and isolated diagnostic package (2026-11-24)
+
+The bounded C agent in pc/native_mcp/mcp_agent.c constructs OpenAI-style
+requests with the discovered read-only MCP tool schemas, consumes one complete
+assistant tool call, obtains a result from McpClient, feeds the result into the
+same model, and repeats (maximum eight calls, bounded history, cancel check
+between operations). Truncated responses, unexpected tools and failures stop
+without dispatching further tools. No DLL/desktop process or LAN API client
+is required for this control loop.
+
+chat/api_run.inc now also supports a purely local in-memory completion; the
+original socket path remains unchanged for normal builds. The experimental
+chat/mcp_console.inc binds that callback to the actual Garlic GPU model on the
+main thread. It exposes only a local mock diagnostic: enter /mcp-test on the
+console keyboard, and the model must call the mock hosts_list tool and return
+mock-ps4. The mock does not contact Sentinel_BS or any network. PASS requires
+exactly one dispatched call and the returned host marker in the answer.
+
+Build: python build_chat.py --mcp-experimental
+- Dedicated app title: BlackServ Coder MCP Test, PSAI00003; no overwrite of
+  the PSAI00001 baseline. Upload/full/4b flags are rejected for this build.
+- Reuses existing QwopusFlash external weights; no new model conversion.
+- New dedicated log and test key paths; API start-up setting is separate.
+- Full PS4 link and PKG generation PASS on Dell with OpenOrbis/Zig.
+- Local file: build/mcp_experimental/IV0000-PSAI00003_00-PS4LOCALAICHAT03.pkg
+- 41,156,608 bytes; SHA256 B73AA01D26B636251503C3B78B434B2F974F4949A084A2821A8B8053D6D662B8.
+- Installer checksum dry run PASS, NO install request sent.
+- Local real Garlic parser: MCP wire 30/30, client 22/22, agent 5/5;
+  HTTPS mock policy PASS; API generation regression incl. local capture,
+  stream denial, malformed request and cancellation 329/329 PASS.
+
+Physical acceptance is BLOCKED: baseline PS4 /health was OK, but Remote PKG
+Installer /api/v2/system timed out; storage capacity is unverified. Do not
+bypass the installer capacity gate. Owner needs to confirm free storage,
+open the installer or install the separate PKG, then launch the test title.
+Check the baseline is preserved; run /mcp-test and capture its diagnostic log.
+No app was installed and no real SSL/TLS connection was attempted.
+
+Live Sentinel_BS authorization gate: read-only source review of main
+(public_auth.py blob c2ded1551d9429a2144c767be53cbf994ec28fbb and mcp_server.py
+blob 6b99d1125120a59a7db02c7416228d6969249e71) shows proxy JWT verification
+and a general registered toolset including mutation tools. These files do
+not demonstrate separate per-console identity/tool/host restrictions.
+Do not provide the console an existing broad Cloudflare credential. A
+restricted test service and verified server-side identity policy are needed
+before real connection. Native SceHttp adapter is linked but not invoked by
+the local diagnostic; context initialization, TLS on hardware, real test
+MCP service, owner pairing and authenticated tool loop remain unverified.

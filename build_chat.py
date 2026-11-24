@@ -18,9 +18,15 @@ import sys
 import build as b
 
 ROOT = b.ROOT
-OUT = ROOT / "build" / "chat"
+MCP_EXPERIMENTAL = "--mcp-experimental" in sys.argv
+if MCP_EXPERIMENTAL and any(x in sys.argv for x in ("--4b", "--full", "--upload")):
+    sys.exit("Experimental MCP build is 9B, external weights, local package only.")
+OUT = ROOT / "build" / ("mcp_experimental" if MCP_EXPERIMENTAL else "chat")
 PKGDIR = OUT / "pkg"
-if "--4b" in sys.argv:
+if MCP_EXPERIMENTAL:
+    TITLE, VERSION, TITLE_ID, SUFFIX = "BlackServ Coder MCP Test", "1.20", "PSAI00003", "03"
+    REMOTE = None
+elif "--4b" in sys.argv:
     TITLE, VERSION, TITLE_ID, SUFFIX = "Garlic LLM 4B", "1.17", "PSAI00002", "02"
     REMOTE = "/data/pkg/Garlic-LLM-4B.pkg"
 else:
@@ -31,6 +37,8 @@ FULL = "--full" in sys.argv
 FULL_MODELS = (["qwen3.5-4b-q4i.bin"] if "--4b" in sys.argv else ["qwen3.5-9b-q4s.bin", "qwen3.5-9b-mtp.bin"]) +     ["parakeet-v3-q4i.bin", "chatterbox-t3.bin", "chatterbox-s3gen-mf.bin"]
 CONTENT_ID = f"IV0000-{TITLE_ID}_00-PS4LOCALAICHAT{SUFFIX}"
 SOURCES = sorted((ROOT / "chat").glob("*.c"))
+if MCP_EXPERIMENTAL:
+    SOURCES += sorted((ROOT / "pc" / "native_mcp").glob("mcp_*.c"))
 MP = ROOT / "chat" / "py" / "mp"
 MP_SOURCES = sorted([*(MP / "py").glob("*.c"), *(MP / "extmod").glob("*.c"), *(MP / "shared" / "runtime").glob("*.c"),
                      ROOT / "chat" / "py" / "garlic_str.c"])
@@ -38,6 +46,8 @@ MP_FLAGS = [f"-I{ROOT / 'chat' / 'py'}", f"-I{MP}", "-DNDEBUG", "-std=gnu99", "-
             "-Wno-unused-function", "-Wno-unused-variable", "-Wno-unused-but-set-variable"]
 LIBS = ["-lc", "-lm", "-lkernel", "-lSceGnmDriver", "-lSceVideoOut", "-lScePad", "-lSceUserService", "-lSceSysmodule",
         "-lSceImeDialog", "-lSceCommonDialog", "-lSceAudioIn", "-lSceAudioOut", "-lSceSystemService", "-lSceNet"]
+if MCP_EXPERIMENTAL:
+    LIBS += ["-lSceHttp", "-lSceSsl"]
 
 
 def compile_all():
@@ -48,6 +58,8 @@ def compile_all():
     jobs = []
     for src in SOURCES:
         model = ["-DGARLIC_4B"] if "--4b" in sys.argv else []
+        if MCP_EXPERIMENTAL:
+            model += ["-DGARLIC_MCP_EXPERIMENTAL", f"-I{ROOT / 'chat'}", f"-I{ROOT / 'pc' / 'native_mcp'}"]
         jobs.append((src, objdir / (src.stem + ".o"), [*b.CFLAGS, *MP_FLAGS[:2], *model], True))
     for src in MP_SOURCES:
         obj = objdir / ("mp_" + src.parent.name + "_" + src.stem + ".o")

@@ -7,6 +7,9 @@ on:
       - 'tests/mcp_wire_test.c'
       - 'tests/mcp_client_test.c'
       - 'tests/mcp_https_test.c'
+      - 'tests/mcp_agent_test.c'
+      - 'tests/api_run_test.c'
+      - 'chat/api_run.inc'
       - 'tests/mcp_https_host/**'
       - 'chat/api_proto.c'
       - 'chat/api_proto.h'
@@ -43,3 +46,10 @@ jobs:
             pc/native_mcp/mcp_https.c tests/mcp_https_test.c \
             -o /tmp/mcp_https_test
           /tmp/mcp_https_test
+
+          cc -std=gnu11 -O1 -Wall -Wextra -Werror -Ichat -Ipc/native_mcp \
+            pc/native_mcp/mcp_wire.c pc/native_mcp/mcp_client.c pc/native_mcp/mcp_agent.c \
+            chat/api_proto.c tests/mcp_agent_test.c -lm -o /tmp/mcp_agent_test
+          /tmp/mcp_agent_test
+          cc -std=gnu99 -O1 -Wall -Wextra -Ichat tests/api_run_test.c chat/api_proto.c -lm -o /tmp/api_run_test
+          /tmp/api_run_test

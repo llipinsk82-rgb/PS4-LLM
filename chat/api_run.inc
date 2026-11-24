@@ -314,9 +314,11 @@ static int api_can_snap(void) {
 
 // Reads ids[from, to) of the prompt in pieces of API_CHUNK, the last one drawing next_token at temperature temp.
 // Returns 0, 1 if the client left or Circle stopped it (between pieces), or -1 on an engine error.
+static int api_job_client_gone(int fd) { return fd >= 0 && api_client_gone(fd); }
+
 static int api_read(int fd, int from, int to, float temp) {
     for (int at = from; at < to; at += API_CHUNK) {
-        if (at > from && (api_client_gone(fd) || api_chat_step(0))) return 1;
+        if (at > from && (api_job_client_gone(fd) || api_chat_step(0))) return 1;
         int k = to - at < API_CHUNK ? to - at : API_CHUNK;
         if (engine_run(&eng, api_ids + at, k, at, temp, seed++, &next_token)) return -1;
     }
@@ -353,6 +355,7 @@ static int api_read_prompt(int fd, int n, int head, int tool_turn, float temp, i
 }
 
 static void api_error(int fd, const char* status_line, const char* message, const char* type, const char* code) {
+    if (fd < 0) return;   // internal caller receives failure, never writes to a socket
     Sb s;
     sb_init(&s);
     api_json_error(&s, message, type, code);
@@ -416,9 +419,10 @@ static int api_is_blank(const uint8_t* p, int n) {
     return 1;
 }
 
-static void api_job(ApiJob* job) {
+static void api_job_impl(ApiJob* job, Sb* local) {
     static unsigned api_count;
-    if (api_client_gone(job->fd)) {   // (it waited in line, and its client has given up meanwhile)
+    if ((job->fd < 0) != (local != NULL)) return;
+    if (api_job_client_gone(job->fd)) {   // (it waited in line, and its client has given up meanwhile)
         say("api: the client of a waiting request left; nothing to answer");
         return;
     }
@@ -431,6 +435,7 @@ static void api_job(ApiJob* job) {
         else api_error(job->fd, "HTTP/1.1 500 Internal Server Error", "Out of memory.", "server_error", NULL);
         return;
     }
+    if (local && cr.stream) { free(pool); return; }
     int think_switch, tool_turn;
     int n = api_prompt(pool, &cr, &think_switch, &tool_turn);
     if (n == -1 || n == -3) {
@@ -501,7 +506,7 @@ static void api_job(ApiJob* job) {
         api_chat_end();
         return;
     }
-    if (read > 0 && api_client_gone(fd)) {   // (no one to answer)
+    if (read > 0 && api_job_client_gone(fd)) {   // (no one to answer)
         sb_free(&text);
         pos = 0;
         api_chat_end();
@@ -616,7 +621,7 @@ static void api_job(ApiJob* job) {
         // has closed its connection meanwhile is seen by a look at it now and then
         if ((!streamed || in_call) && produced + think_n >= next_look) {
             next_look = produced + think_n + API_LOOK;
-            if (api_client_gone(fd)) {
+            if (api_job_client_gone(fd)) {
                 client_gone = 1;
                 break;
             }
@@ -726,7 +731,9 @@ static void api_job(ApiJob* job) {
         sb_str(&head_s, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ");
         sb_int(&head_s, (long long)body.n);
         sb_str(&head_s, "\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n");
-        if (head_s.p && body.p && api_send(fd, head_s.p, head_s.n) == 0) api_send(fd, body.p, body.n);
+        if (local) {
+            if (!stopped && !body.oom && body.p) sb_add(local, body.p, body.n);
+        } else if (head_s.p && body.p && api_send(fd, head_s.p, head_s.n) == 0) api_send(fd, body.p, body.n);
         sb_free(&body);
         sb_free(&head_s);
     }
@@ -741,3 +748,6 @@ static void api_job(ApiJob* job) {
     need_close = 0;
     api_chat_end();
 }
+
+/* The existing LAN API still uses its socket. Native callers use the in-memory completion. */
+static void api_job(ApiJob* job) { api_job_impl(job, NULL); }

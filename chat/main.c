@@ -41,7 +41,9 @@
 #define MODEL_NAME (eng.qwen35 ? (eng.hidden >= 4096 ? "Qwen3.5-9B" : "Qwen3.5-4B") : "Qwen3-4B")
 #define MAX_REPLY 3000
 // One log per app (so that opening the other app does not lose this one's log), and the one before it
-#if defined(GARLIC_4B)
+#if defined(GARLIC_MCP_EXPERIMENTAL)
+#define LOG_NAME "/data/ps4ai_log_mcp_test"
+#elif defined(GARLIC_4B)
 #define LOG_NAME "/data/ps4ai_log_4b"
 #else
 #define LOG_NAME "/data/ps4ai_log"
@@ -49,7 +51,13 @@
 #define LOG_FILE LOG_NAME ".txt"
 #define LOG_PREV LOG_NAME "_prev.txt"
 #define VOICE_FILE "/data/voz.wav"   // used instead of the microphone when there is none (testing)
+#ifdef GARLIC_MCP_EXPERIMENTAL
+#define KEYS_FILE "/data/garlic_mcp_keys.txt"
+#define KEYS_DONE_FILE "/data/garlic_mcp_keys.done.txt"
+#else
 #define KEYS_FILE "/data/garlic_keys.txt"   // test aid: buttons, questions and screenshots from a file (inj_buttons)
+#define KEYS_DONE_FILE "/data/garlic_keys.done.txt"
+#endif
 
 uint32_t* back;
 
@@ -220,7 +228,7 @@ static uint32_t inj_buttons(void) {
         size_t n = 0;
         char* f = (char*)read_all(KEYS_FILE, &n);
         if (!f) return 0;
-        rename(KEYS_FILE, "/data/garlic_keys.done.txt");
+        rename(KEYS_FILE, KEYS_DONE_FILE);
         if (!n) {
             free(f);
             return 0;
@@ -1800,7 +1808,11 @@ static void boot_report(void) {
 // shows where it listens. While the model answers a request the conversation gives way to a note, the header shows
 // the speed and Circle stops the reply, as in the chat; with the stick pushed (scrolling) L3 does nothing.
 
+#ifdef GARLIC_MCP_EXPERIMENTAL
+#define API_FILE "/data/garlic_mcp_api.txt"
+#else
 #define API_FILE "/data/garlic_api.txt"   // "1": the API is on when the app starts
+#endif
 // L3 is a click of the stick that also scrolls: it counts only while the stick and the D-pad are at rest
 #define PAD_DIRS (ORBIS_PAD_BUTTON_UP | ORBIS_PAD_BUTTON_DOWN | ORBIS_PAD_BUTTON_LEFT | ORBIS_PAD_BUTTON_RIGHT)
 
@@ -1888,6 +1900,9 @@ static void api_chat_end(void) {
 }
 
 #include "api_run.inc"   // the OpenAI-compatible API's jobs on the model (api.c serves the requests)
+#ifdef GARLIC_MCP_EXPERIMENTAL
+#include "mcp_console.inc"
+#endif
 
 int main(void) {
     if (rename(LOG_FILE, LOG_PREV)) unlink(LOG_FILE);   // the last log of this app is kept, as LOG_PREV
@@ -1976,6 +1991,10 @@ int main(void) {
             api_console_busy(1);
             if (cross ? keyboard(text, 1500, 0) : ask_user(text, sizeof(text))) {
                 say("user wrote %d bytes", (int)strlen(text));
+#ifdef GARLIC_MCP_EXPERIMENTAL
+                if (!strcmp(text, "/mcp-test")) mcp_console_test();
+                else
+#endif
                 start_turn(text);
             }
             prev = read_buttons();

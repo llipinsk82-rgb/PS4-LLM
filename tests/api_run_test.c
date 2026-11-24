@@ -210,7 +210,7 @@ static int fails, checks;
         }                                                                     \
     } while (0)
 
-static void run_job(const char* body, const uint32_t* sc, int sc_len) {
+static void run_job_mode(const char* body, const uint32_t* sc, int sc_len, Sb* local) {
     memset(wire, 0, sizeof(wire));
     wire_n = 0;
     script = sc;
@@ -224,9 +224,10 @@ static void run_job(const char* body, const uint32_t* sc, int sc_len) {
     memset(&job, 0, sizeof(job));
     job.body = (char*)body;
     job.body_len = strlen(body);
-    job.fd = 7;
-    api_job(&job);
+    job.fd = local ? -1 : 7;
+    if (local) api_job_impl(&job, local); else api_job(&job);
 }
+static void run_job(const char* body, const uint32_t* sc, int sc_len) { run_job_mode(body, sc, sc_len, NULL); }
 
 static const char* body_of(const char* w) {
     const char* b = strstr(w, "\r\n\r\n");
@@ -282,6 +283,25 @@ static void test_completion(void) {
     CHECK(pos == 0 && msgs_cleared >= 1);
 }
 
+static void test_local_completion(void) {
+    static const uint32_t sc[]={'H'+1,'i'+1};
+    Sb result;sb_init(&result);
+    run_job_mode("{\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}",sc,2,&result);
+    CHECK(wire_n==0 && result.p && strstr(result.p,"\"content\":\"Hi\"") && !strstr(result.p,"HTTP/1.1"));
+    CHECK(result.p && strstr(result.p,"\"finish_reason\":\"stop\""));
+    sb_free(&result);sb_init(&result);
+    run_job_mode("{\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":true}",sc,2,&result);
+    CHECK(wire_n==0 && result.n==0);
+    sb_free(&result);sb_init(&result);
+    run_job_mode("{invalid",sc,2,&result);
+    CHECK(wire_n==0 && result.n==0);
+    sb_free(&result);sb_init(&result);
+    stop_at=1;
+    run_job_mode("{\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}",sc,2,&result);
+    stop_at=-1;
+    CHECK(wire_n==0 && result.n==0);
+    sb_free(&result);
+}
 static void test_length(void) {
     static const uint32_t sc[] = {'H' + 1, 'e' + 1, 'l' + 1, 'l' + 1, 'o' + 1};
     run_job("{\"messages\":[{\"role\":\"user\",\"content\":\"x\"}],\"max_tokens\":3}", sc, 5);
@@ -882,6 +902,7 @@ int main(void) {
     test_utf8();
     for (spec_on = 0; spec_on <= 1; spec_on++) {
         test_completion();
+        test_local_completion();
         test_length();
         test_stream();
         test_errors();
