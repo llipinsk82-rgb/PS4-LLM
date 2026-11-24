@@ -16,7 +16,7 @@ Run from the repository root:
 
 Second command is a dry-run: verifies the PKG checksum without requesting installation. An actual install requires --execute and remains blocked while storage readings are invalid; do not bypass this before verifying real free space.
 
-After storage verification, implement a reviewed explicit capacity override. The downloader needs to reach the Dell single-PKG HTTP server on the LAN. Any firewall changes require separate review.
+After owner verification of the current PS4 Storage screen, pass --confirmed-free-gb with the displayed free GB rounded down, only when the API is invalid. The default still refuses invalid capacity; reliable API values always take precedence. At least 1 GB and twice the package size are required. The downloader needs to reach the Dell single-PKG HTTP server on the LAN. Any firewall changes require separate review.
 
 ## Remote control is separate
 Remote PKG Installer cannot control the PS4 interface. To view/control the screen, pair Chiaki-ng with PS4 via Settings > Remote Play Connection Settings > Add Device.

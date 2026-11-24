@@ -48,6 +48,17 @@ class RemotePkgSafety(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             m.NoRedirect().redirect_request(None, None, 302, "Found", {}, "http://example.com")
 
+    def test_explicit_owner_capacity(self):
+        bad = {"storage": {"free": 2**63, "total": 0}}
+        self.assertEqual(m.verified_capacity(bad, False, 41_156_608, 373), 373_000_000_000)
+        for value in (None, 0, -1, True, 16001):
+            with self.assertRaises(RuntimeError):
+                m.verified_capacity(bad, False, 41_156_608, value)
+        with self.assertRaises(RuntimeError):
+            m.verified_capacity(bad, False, 800_000_000, 1)
+        with self.assertRaises(RuntimeError):
+            m.verified_capacity({"storage": {"free": 500}}, True, 41_156_608, 373)
+
     def test_reject_unverified_capacity(self):
         original = m.status
         try:

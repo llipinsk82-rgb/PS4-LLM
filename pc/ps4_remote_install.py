@@ -153,12 +153,22 @@ def dell_ip(ps4):
         return private_ip(s.getsockname()[0])
 
 
-def install(ip, file, port):
+def verified_capacity(system, reliable, size, confirmed_free_gb=None):
+    if reliable:
+        free = system["storage"]["free"]
+    else:
+        if type(confirmed_free_gb) is not int or not 1 <= confirmed_free_gb <= 16000:
+            raise RuntimeError("Storage API invalid; verify free disk space on PS4 before installing")
+        free = confirmed_free_gb * 1_000_000_000
+    if free < max(1_000_000_000, size * 2):
+        raise RuntimeError("Insufficient verified free space")
+    return free
+
+
+def install(ip, file, port, confirmed_free_gb=None):
     system, jobs, reliable = status(ip)
-    if not reliable:
-        raise RuntimeError("Storage API invalid; verify free disk space on PS4 before installing")
-    if system["storage"]["free"] < file.stat().st_size * 2:
-        raise RuntimeError("Insufficient reported free space")
+    free = verified_capacity(system, reliable, file.stat().st_size, confirmed_free_gb)
+    print("CAPACITY_VERIFIED", free, "API" if reliable else "OWNER_SCREEN", flush=True)
     if jobs:
         raise RuntimeError("Installer already has jobs; refusing overlap")
     local = dell_ip(ip)
@@ -204,6 +214,7 @@ def main():
     op.add_argument("--sha256", required=True)
     op.add_argument("--execute", action="store_true")
     op.add_argument("--port", type=int, default=18080)
+    op.add_argument("--confirmed-free-gb", type=int, help="Whole GB rounded DOWN from current owner-verified PS4 Storage screen; only used if API is invalid")
     a = p.parse_args()
     if a.command == "status":
         info, jobs, reliable = status(a.ps4)
@@ -218,7 +229,7 @@ def main():
             return
         if not 1024 <= a.port <= 65535:
             raise ValueError("Invalid local port")
-        install(a.ps4, file, a.port)
+        install(a.ps4, file, a.port, a.confirmed_free_gb)
 
 
 if __name__ == "__main__":
