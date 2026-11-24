@@ -165,12 +165,26 @@ def verified_capacity(system, reliable, size, confirmed_free_gb=None):
     return free
 
 
-def install(ip, file, port, confirmed_free_gb=None):
+def check_jobs(jobs, retry_failed_id=None):
+    if not jobs and retry_failed_id is None:
+        return
+    # Only an explicitly identified, failed header fetch with no BGFT task
+    # or transferred data can be ignored. All other entries block.
+    if (type(retry_failed_id) is int and retry_failed_id > 0 and len(jobs) == 1
+            and isinstance(jobs[0], dict)):
+        j = jobs[0]
+        if (j.get("id") == retry_failed_id and j.get("state") == "failed"
+                and j.get("bgft_task_id") == -1 and j.get("transferred") == 0
+                and j.get("package_size") == 0 and j.get("content_id") == ""):
+            return
+    raise RuntimeError("Installer already has jobs; refusing overlap")
+
+
+def install(ip, file, port, confirmed_free_gb=None, retry_failed_id=None):
     system, jobs, reliable = status(ip)
     free = verified_capacity(system, reliable, file.stat().st_size, confirmed_free_gb)
     print("CAPACITY_VERIFIED", free, "API" if reliable else "OWNER_SCREEN", flush=True)
-    if jobs:
-        raise RuntimeError("Installer already has jobs; refusing overlap")
+    check_jobs(jobs, retry_failed_id)
     local = dell_ip(ip)
     srv = ThreadingHTTPServer((local, port), server_class(file, ip))
     srv.daemon_threads = True
@@ -183,7 +197,7 @@ def install(ip, file, port, confirmed_free_gb=None):
         if not isinstance(job_id, int):
             raise RuntimeError("No job ID; inspect PS4")
         print("INSTALL_ACCEPTED", job_id, flush=True)
-        until = time.monotonic() + 900
+        until = time.monotonic() + 240
         last_state = None
         while time.monotonic() < until:
             time.sleep(3)
@@ -214,6 +228,7 @@ def main():
     op.add_argument("--sha256", required=True)
     op.add_argument("--execute", action="store_true")
     op.add_argument("--port", type=int, default=18080)
+    op.add_argument("--retry-failed-id", type=int, help="Explicit retry of a single failed header fetch with no BGFT task or bytes transferred")
     op.add_argument("--confirmed-free-gb", type=int, help="Whole GB rounded DOWN from current owner-verified PS4 Storage screen; only used if API is invalid")
     a = p.parse_args()
     if a.command == "status":
@@ -229,7 +244,7 @@ def main():
             return
         if not 1024 <= a.port <= 65535:
             raise ValueError("Invalid local port")
-        install(a.ps4, file, a.port, a.confirmed_free_gb)
+        install(a.ps4, file, a.port, a.confirmed_free_gb, a.retry_failed_id)
 
 
 if __name__ == "__main__":

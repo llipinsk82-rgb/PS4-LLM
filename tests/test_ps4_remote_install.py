@@ -59,6 +59,17 @@ class RemotePkgSafety(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             m.verified_capacity({"storage": {"free": 500}}, True, 41_156_608, 373)
 
+    def test_explicit_failed_header_retry(self):
+        j = dict(id=1, state="failed", bgft_task_id=-1, transferred=0, package_size=0, content_id="")
+        m.check_jobs([])
+        m.check_jobs([j], 1)
+        for jobs, retry in (([j], None), ([j], 2), ([j, j], 1), ([], 1),
+                            ([dict(j, state="running")], 1), ([dict(j, transferred=1)], 1),
+                            ([dict(j, bgft_task_id=0)], 1), ([dict(j, package_size=1)], 1),
+                            ([dict(j, content_id="known")], 1)):
+            with self.assertRaises(RuntimeError):
+                m.check_jobs(jobs, retry)
+
     def test_reject_unverified_capacity(self):
         original = m.status
         try:
