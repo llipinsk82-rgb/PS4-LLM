@@ -95,3 +95,35 @@ architecture: the native transport and tool loop must run on PS4.
 
 Changes to Sentinel_BS production, Cloudflare Access settings, VM101/VM102,
 Della system configuration and the PS4 were not performed.
+
+## Experimental native SceHttp adapter (2026-11-24)
+
+`pc/native_mcp/mcp_https.c` implements the McpPost callback using PS4 SceHttp.
+It requires a caller-owned initialized HTTP context, owner-selected DNS hostname,
+port 443 and fixed /mcp route. It requests server, hostname, CA and certificate
+validity verification plus SNI, explicitly disables redirects and checks that
+setting, requests bounded DNS/connect/send/read timeouts and checks a monotonic
+deadline between blocking operations. The deadline is not a hard asynchronous
+cancellation guarantee. Only HTTP 200 and empty HTTP 202 are accepted. Responses
+are capped at the wire size limit; request/connection/template objects are freed
+on all paths. Optional bearer credentials must be supplied by the owner-side
+caller, never by the model. No real token, endpoint, login, or production action
+is included. Stateless JSON MCP only; SSE and session IDs are not supported.
+
+OpenOrbis Http.h has incomplete declarations of the redirect, receive timeout,
+and resolve retry functions. The adapter explicitly declares the signatures
+cross-checked against shadPS4 network/http.h blob
+82d692af981f5fa89a29fdd73c3512bae66182d6. Emulator declarations are supporting
+evidence, not proof of actual PS4 firmware behavior.
+
+Verified on Dell: PS4-targeted OpenOrbis/Zig compile with -Wall -Wextra -Werror
+PASS (mcp_https.o 19,096 bytes); host mock-SceHttp policy and cleanup test PASS
+(invalid endpoints/header injection, TLS configuration failure, redirect
+configuration failure, 302, send/read failure, exact and oversized response,
+202 notification). Mock checks do not verify real TLS or timing.
+
+The adapter remains outside chat/ and is NOT enabled. Remaining acceptance gates:
+actual PS4 SSL/HTTP context lifecycle, native inference/tool loop, physical PS4
+positive and negative certificate/hostname tests with a dedicated test service,
+server-enforced read-only client authorization, owner pairing, cancellation and
+full app link/package. Do not use real Sentinel_BS credentials until these pass.

@@ -6,6 +6,8 @@ on:
       - 'pc/native_mcp/**'
       - 'tests/mcp_wire_test.c'
       - 'tests/mcp_client_test.c'
+      - 'tests/mcp_https_test.c'
+      - 'tests/mcp_https_host/**'
       - 'chat/api_proto.c'
       - 'chat/api_proto.h'
       - '.github/workflows/mcp-wire-host.yml'
@@ -35,3 +37,9 @@ jobs:
             tests/mcp_client_test.c chat/api_proto.c \
             -lm -o /tmp/mcp_client_test
           /tmp/mcp_client_test
+
+          cc -std=gnu11 -O1 -Wall -Wextra -Werror \
+            -Itests/mcp_https_host -Ichat -Ipc/native_mcp \
+            pc/native_mcp/mcp_https.c tests/mcp_https_test.c \
+            -o /tmp/mcp_https_test
+          /tmp/mcp_https_test
